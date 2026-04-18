@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EcoDrone Designer — A Design-for-Environment Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f1a18;
+    --paper: #f3efe6;
+    --paper-2: #e9e3d4;
+    --rule: #1f2a28;
+    --moss: #2d5a3d;
+    --moss-2: #3a7051;
+    --leaf: #88b172;
+    --rust: #b8472e;
+    --amber: #d4931f;
+    --stone: #6b6a5f;
+    --hazard: #c8321a;
+    --good: #2d7a3f;
+    --warn: #b57520;
+    --shadow: 0 1px 0 rgba(15,26,24,0.06), 0 8px 28px -12px rgba(15,26,24,0.18);
+    --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.06 0 0 0 0 0.1 0 0 0 0 0.08 0 0 0 0.4 0'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='0.35'/></svg>");
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    overflow-x: hidden;
+    position: relative;
+  }
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: var(--grain);
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.6;
+    mix-blend-mode: multiply;
+  }
+
+  /* ======= Typography ======= */
+  .serif { font-family: 'Fraunces', Georgia, serif; font-variation-settings: "SOFT" 30, "WONK" 0; }
+  .mono  { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  h1, h2, h3, h4 { font-family: 'Fraunces', Georgia, serif; font-weight: 600; line-height: 1.1; letter-spacing: -0.01em; }
+
+  /* ======= Layout shell ======= */
+  .stage { max-width: 1180px; margin: 0 auto; padding: 32px 40px 80px; position: relative; }
+  .masthead {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: end;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--ink);
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+  .masthead .mark {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-style: italic;
+    font-size: 30px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .masthead .mark em { color: var(--moss); font-style: italic; }
+  .masthead .title {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: clamp(28px, 4vw, 44px);
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+  }
+  .masthead .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--stone);
+    text-align: right;
+  }
+  .rule-row {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--stone);
+    padding: 6px 0 18px;
+    border-bottom: 1px solid rgba(15,26,24,0.2);
+    margin-bottom: 24px;
+  }
+
+  /* ======= Screens ======= */
+  .screen { display: none; animation: fadeUp .5s ease both; }
+  .screen.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ======= Buttons ======= */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 22px;
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 600; font-size: 14px;
+    letter-spacing: 0.02em;
+    background: var(--ink); color: var(--paper);
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease;
+    text-transform: uppercase;
+  }
+  .btn:hover { transform: translateY(-1px); background: var(--moss); border-color: var(--moss); }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn.ghost:hover { background: var(--ink); color: var(--paper); }
+  .btn.small { padding: 8px 14px; font-size: 12px; }
+  .btn-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 28px; }
+
+  /* ======= Pre-brief ======= */
+  .welcome-wrap {
+    min-height: calc(100vh - 240px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+  }
+  .welcome-card {
+    max-width: 720px;
+    width: 100%;
+    padding: 56px 48px;
+    background: var(--paper-2);
+    border: 2px solid var(--ink);
+  }
+  .welcome-card .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    font-size: 11px;
+  }
+  .welcome-card h1 {
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+    font-weight: 800;
+  }
+  .welcome-card .lede {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .welcome-card input:focus {
+    border-color: var(--moss) !important;
+    background: #fff !important;
+  }
+  .hero {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 40px;
+    align-items: end;
+    padding: 28px 0 36px;
+    border-bottom: 1px solid rgba(15,26,24,0.2);
+  }
+  .hero .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.18em;
+    font-size: 11px; color: var(--rust);
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-size: clamp(44px, 6vw, 82px);
+    letter-spacing: -0.03em;
+    line-height: 0.9;
+    font-weight: 800;
+  }
+  .hero h1 em { font-style: italic; color: var(--moss); }
+  .hero .lede {
+    font-family: 'Fraunces', serif;
+    font-size: 19px;
+    line-height: 1.45;
+    color: var(--ink);
+    max-width: 46ch;
+  }
+  .hero .drone-art {
+    aspect-ratio: 1 / 1;
+    position: relative;
+    border: 1px solid rgba(15,26,24,0.25);
+    background: var(--paper-2);
+    overflow: hidden;
+  }
+  .hero .drone-art svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hero .drone-art .tag {
+    position: absolute; left: 14px; bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--stone);
+  }
+
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 36px; }
+  .columns h2 {
+    font-size: 26px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 6px;
+    margin-bottom: 14px;
+  }
+  .columns p { margin-bottom: 12px; font-size: 15px; }
+  .columns .dropcap::first-letter {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: 56px;
+    float: left;
+    line-height: 0.85;
+    padding: 4px 8px 0 0;
+    color: var(--moss);
+  }
+
+  .rules-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 16px 0; }
+  .rule-card {
+    padding: 14px 16px;
+    border: 1px solid rgba(15,26,24,0.25);
+    background: var(--paper);
+    position: relative;
+  }
+  .rule-card .num {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--rust);
+    line-height: 1;
+  }
+  .rule-card .t {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 15px;
+    margin: 4px 0 6px;
+  }
+  .rule-card p { font-size: 13px; color: var(--ink); }
+
+  .metric-legend { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px; }
+  .metric-legend .m {
+    padding: 10px 12px;
+    border: 1px solid rgba(15,26,24,0.25);
+    background: var(--paper);
+  }
+  .metric-legend .m .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--stone);
+  }
+  .metric-legend .m .name {
+    font-family: 'Fraunces', serif;
+    font-weight: 600; font-size: 15px; margin-top: 2px;
+  }
+  .metric-legend .m .desc { font-size: 11px; color: var(--stone); margin-top: 4px; }
+
+  .source-strip {
+    margin-top: 22px; padding: 14px 18px;
+    background: var(--ink); color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.04em;
+  }
+  .source-strip strong { color: var(--leaf); font-weight: 700; }
+
+  /* ======= Game / Round Screens ======= */
+  .round-head {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 24px;
+    align-items: center;
+    padding: 12px 0 18px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 26px;
+  }
+  .round-head .phase {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--rust);
+  }
+  .round-head h2 {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .round-head h2 em { color: var(--moss); font-style: italic; }
+  .round-head .stepper {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--stone);
+    text-align: right;
+  }
+
+  .progress {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    margin: 0 0 22px;
+  }
+  .progress .step {
+    height: 6px; background: var(--paper-2);
+    position: relative;
+  }
+  .progress .step.done { background: var(--moss); }
+  .progress .step.active { background: var(--ink); }
+  .progress .step::after {
+    content: attr(data-l);
+    position: absolute; top: 10px; left: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--stone);
+  }
+
+  .decision-wrap { display: grid; grid-template-columns: 1fr 340px; gap: 32px; margin-top: 30px; }
+
+  .decision-card {
+    border: 1px solid rgba(15,26,24,0.2);
+    background: var(--paper);
+    padding: 24px 26px;
+    position: relative;
+  }
+  .decision-card .qnum {
+    position: absolute; top: -10px; left: 24px;
+    background: var(--ink); color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 3px 10px;
+  }
+  .decision-card h3 {
+    font-size: 22px; margin-bottom: 6px; font-weight: 700;
+  }
+  .decision-card .context {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: var(--stone);
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px dashed rgba(15,26,24,0.3);
+  }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 14px; align-items: start;
+    padding: 14px 16px;
+    border: 1px solid rgba(15,26,24,0.25);
+    background: var(--paper);
+    cursor: pointer;
+    transition: all .15s ease;
+    position: relative;
+  }
+  .option:hover { background: var(--paper-2); border-color: var(--ink); }
+  .option.chosen {
+    background: #1f3228;
+    color: var(--paper);
+    border-color: var(--moss);
+  }
+  .option.chosen .opt-label { color: var(--leaf); }
+  .option.chosen .opt-detail { color: rgba(243,239,230,0.8); }
+  .option .opt-mark {
+    width: 22px; height: 22px;
+    border: 2px solid var(--ink);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .option.chosen .opt-mark {
+    background: var(--leaf);
+    border-color: var(--leaf);
+  }
+  .option.chosen .opt-mark::after {
+    content: ""; width: 8px; height: 8px; background: var(--ink); border-radius: 50%;
+  }
+  .option .opt-body .opt-label {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.2;
+  }
+  .option .opt-body .opt-detail {
+    font-size: 13px; color: var(--stone); margin-top: 4px;
+  }
+  .option .opt-tags {
+    display: flex; flex-direction: column; gap: 3px; align-items: flex-end;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .option .opt-tags span {
+    padding: 2px 6px; border: 1px solid currentColor;
+    color: var(--stone);
+  }
+
+  /* ======= Dashboard ======= */
+  .dashboard { position: sticky; top: 20px; align-self: start; }
+  .dashboard h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--stone);
+    border-bottom: 1px solid rgba(15,26,24,0.25);
+    padding-bottom: 8px; margin-bottom: 14px;
+  }
+  .metric {
+    margin-bottom: 16px;
+  }
+  .metric .top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .metric .name {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .metric .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; font-weight: 700;
+  }
+  .metric .bar {
+    height: 7px; background: var(--paper-2);
+    overflow: hidden;
+    position: relative;
+  }
+  .metric .fill {
+    height: 100%; background: var(--moss);
+    transition: width .5s cubic-bezier(.5,.0,.2,1), background .3s;
+    width: 50%;
+  }
+  .metric.env .fill { background: var(--moss); }
+  .metric.cost .fill { background: var(--rust); }
+  .metric.recy .fill { background: var(--leaf); }
+  .metric.perf .fill { background: var(--amber); }
+  .metric.mkt  .fill { background: var(--ink); }
+
+  .mini-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--stone);
+    margin-top: 6px; line-height: 1.4;
+    padding: 8px 10px; background: var(--paper-2);
+    border-left: 2px solid var(--moss);
+    min-height: 40px;
+  }
+
+  .nav-row {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(15,26,24,0.25);
+  }
+
+  /* ======= Post-brief / Results ======= */
+  .results-head {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 26px;
+  }
+  .results-head h2 {
+    font-size: 56px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 0.9;
+  }
+  .results-head h2 em { color: var(--moss); font-style: italic; }
+  .results-head .grade-card {
+    text-align: center;
+    padding: 14px 22px;
+    border: 2px solid var(--ink);
+    background: var(--ink); color: var(--paper);
+    min-width: 140px;
+  }
+  .results-head .grade-card .k {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .results-head .grade-card .g {
+    font-family: 'Fraunces', serif;
+    font-weight: 800; font-style: italic;
+    font-size: 56px; line-height: 0.9;
+    margin-top: 4px;
+  }
+  .results-head .grade-card .s { font-family: 'JetBrains Mono', monospace; font-size: 12px; opacity: 0.7; }
+
+  .results-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 38px; margin-bottom: 30px; }
+
+  .scorecard { }
+  .scorecard h3, .feedback-col h3, .assessment h3 {
+    font-size: 22px;
+    border-bottom: 1px solid rgba(15,26,24,0.3);
+    padding-bottom: 6px; margin-bottom: 14px;
+  }
+
+  .big-metric {
+    display: grid; grid-template-columns: 1fr 50px; gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px dashed rgba(15,26,24,0.3);
+    align-items: center;
+  }
+  .big-metric:last-child { border: 0; }
+  .big-metric .nm { font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; }
+  .big-metric .dsc { font-size: 12px; color: var(--stone); margin-top: 2px; }
+  .big-metric .bar { height: 10px; background: var(--paper-2); grid-column: 1/3; margin-top: 8px; }
+  .big-metric .fill { height: 100%; transition: width .8s cubic-bezier(.5,.0,.2,1); }
+  .big-metric .score { font-family: 'Fraunces', serif; font-weight: 700; font-size: 26px; text-align: right; }
+
+  .feedback-col .fb-item {
+    border-left: 3px solid var(--stone);
+    padding: 8px 12px 10px;
+    margin-bottom: 12px;
+    background: var(--paper);
+  }
+  .feedback-col .fb-item.good { border-color: var(--good); }
+  .feedback-col .fb-item.warn { border-color: var(--warn); }
+  .feedback-col .fb-item.bad  { border-color: var(--hazard); }
+  .feedback-col .fb-item .hd {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--stone);
+    margin-bottom: 4px;
+  }
+  .feedback-col .fb-item .ttl { font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; line-height: 1.2; }
+  .feedback-col .fb-item .bd { font-size: 13px; color: var(--ink); margin-top: 4px; }
+
+  /* ======= C2C Assessment Bars ======= */
+  .assessment { margin-top: 10px; padding: 22px 24px; border: 2px solid var(--ink); background: var(--paper); }
+  .c2c-bar { margin-bottom: 16px; }
+  .c2c-bar .hd {
+    display: flex; justify-content: space-between;
+    font-family: 'Fraunces', serif;
+    font-size: 15px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .c2c-bar .hd .pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px; }
+  .c2c-bar .track { height: 22px; position: relative; background: var(--paper-2); display: flex; }
+  .c2c-bar .track .seg { flex: 1; position: relative; border-right: 1px solid var(--paper); }
+  .c2c-bar .track .seg:last-child { border-right: 0; }
+  .c2c-bar .track .marker {
+    position: absolute; top: -4px; bottom: -4px;
+    width: 3px; background: var(--ink);
+    transition: left .8s cubic-bezier(.5,.0,.2,1);
+  }
+  .c2c-bar .labels {
+    display: flex; margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--stone);
+  }
+  .c2c-bar .labels span { flex: 1; text-align: left; }
+  .seg-safest, .seg-up, .seg-post-c, .seg-sep { background: #2d7a3f; }
+  .seg-low, .seg-down, .seg-post-i, .seg-time { background: #d4931f; }
+  .seg-uncert, .seg-tools, .seg-virgin { background: #c77b2a; }
+  .seg-high, .seg-not, .seg-label { background: #c8321a; }
+
+  /* ======= History table ======= */
+  .history {
+    margin-top: 28px;
+    padding: 18px 20px;
+    border: 1px solid rgba(15,26,24,0.25);
+    background: var(--paper);
+  }
+  .history h3 {
+    font-size: 18px; margin-bottom: 10px;
+    font-family: 'Fraunces', serif; font-weight: 600;
+  }
+  .history table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .history th, .history td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(15,26,24,0.15); }
+  .history th { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone); font-weight: 600; }
+  .history td.num { text-align: right; }
+  .history tr.current { background: var(--paper-2); font-weight: 700; }
+
+  /* ======= Insight block ======= */
+  .insight {
+    margin: 18px 0 0;
+    padding: 18px 22px;
+    background: var(--ink); color: var(--paper);
+    position: relative;
+  }
+  .insight::before {
+    content: "THE LESSON";
+    position: absolute; top: -10px; left: 18px;
+    background: var(--rust); color: var(--paper);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    padding: 4px 10px;
+  }
+  .insight h4 {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 6px;
+    color: var(--leaf);
+  }
+  .insight p { font-size: 14px; line-height: 1.5; }
+
+  /* ======= Footer ======= */
+  footer {
+    margin-top: 50px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(15,26,24,0.3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone);
+    display: flex; justify-content: space-between;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .hero, .columns, .decision-wrap, .results-grid { grid-template-columns: 1fr; }
+    .dashboard { position: static; }
+    .rules-grid, .metric-legend { grid-template-columns: 1fr 1fr; }
+    .results-head { grid-template-columns: 1fr; gap: 14px; }
+    .results-head h2 { font-size: 40px; }
+    .stage { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<!-- ============================================================
+     MASTHEAD (always visible)
+============================================================ -->
+<header class="masthead">
+  <div class="mark">eco<em>·</em>drone<br>designer</div>
+  <div class="title">The DFE Situation Room</div>
+  <div class="meta">
+    <div>SIM NO. 01</div>
+    <div id="attemptCount">ATTEMPT 1</div>
+  </div>
+</header>
+<div class="rule-row">
+  <span>A simulation for technology product development</span>
+  <span>Approx. 20 minutes per run</span>
+</div>
+
+<!-- ============================================================
+     SCREEN: WELCOME (NAME ENTRY)
+============================================================ -->
+<section class="screen active" id="screenWelcome">
+  <div class="welcome-wrap">
+    <div class="welcome-card">
+      <div class="kicker" style="color: var(--rust); margin-bottom: 18px;">Welcome · Student Sign-In</div>
+      <h1 style="font-size: clamp(40px, 5vw, 64px); line-height: 1.04; margin-bottom: 14px;">Before we begin.</h1>
+      <p class="lede" style="margin-top: 8px; margin-bottom: 32px;">
+        This simulation will issue a completion certificate at the end of your run. Please enter your name as it should appear on the certificate.
+      </p>
+
+      <label for="studentNameInput" style="display:block; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--stone); margin-bottom: 10px;">Your Name</label>
+      <input type="text" id="studentNameInput" placeholder="e.g. Jamie Rivera" autocomplete="name" spellcheck="false"
+        style="width:100%; padding: 16px 18px; font-family: 'Fraunces', serif; font-size: 22px; color: var(--ink);
+               background: var(--paper); border: 2px solid var(--ink); border-radius: 0;
+               box-sizing: border-box; margin-bottom: 8px; outline: none;"
+        onkeydown="if(event.key==='Enter'){ submitName(); }"
+        oninput="document.getElementById('nameError').style.display='none';" />
+      <div id="nameError" style="display:none; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.1em; color:var(--hazard); margin-top: 4px;">Please enter a name to continue.</div>
+
+      <div class="btn-row" style="justify-content: flex-end; margin-top: 32px;">
+        <button class="btn" onclick="submitName()">Continue →</button>
+      </div>
+
+      <p style="margin-top: 28px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--stone);">
+        Your name is stored only on this device.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN: PRE-BRIEF
+============================================================ -->
+<section class="screen" id="screenPreBrief">
+  <div class="hero">
+    <div>
+      <div class="kicker">Briefing · Design for Environment</div>
+      <h1>Build a drone that <em>doesn't</em> cost the Earth.</h1>
+      <p class="lede" style="margin-top:22px;">
+        You are the lead product manager at <strong>Aurora Systems</strong>, a startup commercializing an autonomous environmental survey drone for scientific fieldwork, agriculture, and port monitoring. Over the next twenty minutes or so, you will drive this product from planning to production — making a sequence of design decisions that will shape its carbon footprint, material chemistry, end-of-life fate, unit cost, and market reception.
+      </p>
+      <div class="btn-row">
+        <button class="btn" onclick="show('screenLearn')">Read the Brief →</button>
+        <button class="btn ghost" onclick="startRun()">Skip · Start Simulation</button>
+      </div>
+    </div>
+    <div class="drone-art">
+      <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <!-- backdrop grid -->
+        <defs>
+          <pattern id="g" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0f1a18" stroke-width="0.3" opacity="0.2"/>
+          </pattern>
+        </defs>
+        <rect width="400" height="400" fill="url(#g)"/>
+        <!-- drone schematic -->
+        <g transform="translate(200,200)" stroke="#0f1a18" stroke-width="1.5" fill="none">
+          <!-- arms -->
+          <line x1="-110" y1="-110" x2="110" y2="110"/>
+          <line x1="110" y1="-110" x2="-110" y2="110"/>
+          <!-- center body -->
+          <rect x="-40" y="-40" width="80" height="80" fill="#f3efe6"/>
+          <circle r="18" fill="#2d5a3d"/>
+          <circle r="10" fill="#88b172"/>
+          <!-- rotor hubs -->
+          <g fill="#f3efe6">
+            <circle cx="-110" cy="-110" r="32"/>
+            <circle cx="110" cy="-110" r="32"/>
+            <circle cx="-110" cy="110" r="32"/>
+            <circle cx="110" cy="110" r="32"/>
+          </g>
+          <!-- rotor blades -->
+          <g opacity="0.5" stroke-dasharray="3 3">
+            <circle cx="-110" cy="-110" r="44"/>
+            <circle cx="110" cy="-110" r="44"/>
+            <circle cx="-110" cy="110" r="44"/>
+            <circle cx="110" cy="110" r="44"/>
+          </g>
+          <!-- sensor -->
+          <rect x="-14" y="40" width="28" height="14" fill="#b8472e"/>
+          <!-- annotations -->
+          <g font-family="JetBrains Mono, monospace" font-size="8" fill="#6b6a5f" stroke="none" letter-spacing="1">
+            <text x="-155" y="-125">FRAME</text>
+            <text x="125" y="-125">ROTOR</text>
+            <text x="-50" y="-50">PCB</text>
+            <text x="-26" y="66">SENSOR</text>
+            <text x="14" y="4">BATT.</text>
+          </g>
+          <!-- crosshairs -->
+          <g stroke="#b8472e" stroke-width="0.8">
+            <line x1="-180" y1="0" x2="-150" y2="0"/>
+            <line x1="150" y1="0" x2="180" y2="0"/>
+            <line x1="0" y1="-180" x2="0" y2="-150"/>
+            <line x1="0" y1="150" x2="0" y2="180"/>
+          </g>
+        </g>
+        <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10" fill="#6b6a5f" letter-spacing="1.5">AURORA-1 · REV.0 · SCHEMATIC</text>
+        <text x="16" y="384" font-family="JetBrains Mono, monospace" font-size="9" fill="#6b6a5f" letter-spacing="1.5">PAYLOAD 1.2KG · ENDURANCE 28 MIN · SURVEY-CLASS UAV</text>
+      </svg>
+      <div class="tag">Fig. 1 — Product Architecture, Baseline</div>
+    </div>
+  </div>
+
+  <!-- Column spread -->
+  <div class="columns">
+    <div>
+      <h2>The Assignment</h2>
+      <p class="dropcap">The global drone market has grown past the point where materials and energy choices are invisible. A commercial quadcopter contains aluminum, carbon-fiber composites, rare-earth magnets, lithium cells, and a dozen plastics — most of which end their lives in landfills or incinerators. Your job is to change that.</p>
+      <p>Aurora-1 must ship in twelve months. It must compete on <em>capability</em> with incumbents from DJI and Parrot, but it must also earn EPEAT Gold and Cradle-to-Cradle Bronze certification. You have a fixed budget and a board that still cares about margin. Every choice trades off against every other.</p>
+
+      <h2 style="margin-top:28px;">The Four DFE Rules</h2>
+      <div class="rules-grid">
+        <div class="rule-card">
+          <div class="num">01</div>
+          <div class="t">Circulate industrial materials</div>
+          <p>Design so every technical material can re-enter manufacturing indefinitely.</p>
+        </div>
+        <div class="rule-card">
+          <div class="num">02</div>
+          <div class="t">Return natural materials</div>
+          <p>Any bio-based component must be safely returnable to nature's cycles.</p>
+        </div>
+        <div class="rule-card">
+          <div class="num">03</div>
+          <div class="t">Eliminate toxics</div>
+          <p>No "molecular garbage" — no substance that neither cycle can metabolize.</p>
+        </div>
+        <div class="rule-card">
+          <div class="num">04</div>
+          <div class="t">Run on clean energy</div>
+          <p>Renewables for production; design for low in-use energy intensity.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h2>How It Works</h2>
+      <p>The simulation is organized into <strong>several rounds</strong>, each matching a phase of the standard product development process: <em>Planning</em>, <em>Concept</em>, <em>System &amp; Detail Design</em>, and <em>Production &amp; End-of-Life</em>.</p>
+      <p>In each round you will make a series of decisions. Each decision carries plausible consequences drawn from current industry research on UAV sustainability (MDPI 2025 LCA reviews, the European LIFE DRONE battery project, Herman Miller's C2C framework, and Ulrich &amp; Eppinger Ch. 12).</p>
+      <p>Your running score is tracked live on five metrics:</p>
+      <div class="metric-legend">
+        <div class="m"><div class="label">E · 28%</div><div class="name">Environment</div><div class="desc">Carbon, toxicity, resource depletion</div></div>
+        <div class="m"><div class="label">R · 24%</div><div class="name">Recyclability</div><div class="desc">Closed-loop potential, disassembly</div></div>
+        <div class="m"><div class="label">C · 15%</div><div class="name">Cost</div><div class="desc">Unit cost at target volume</div></div>
+        <div class="m"><div class="label">P · 18%</div><div class="name">Performance</div><div class="desc">Flight time, payload, reliability</div></div>
+        <div class="m"><div class="label">M · 15%</div><div class="name">Market</div><div class="desc">EPEAT, certifications, brand</div></div>
+      </div>
+      <p style="margin-top:14px;">After the final round you'll see a full Cradle-to-Cradle-style material assessment and per-decision feedback. Then you can try again — your prior attempts are saved so you can compete against yourself.</p>
+
+      <div class="insight" style="margin-top: 18px;">
+        <h4>The Coherence Penalty</h4>
+        <p>A DFE program is judged on its weakest link. Each decision flagged as anti-DFE in the post-brief compounds a penalty against your final score (up to −45% for a fully incoherent program). Heroic choices on some axes cannot rescue a contradiction elsewhere.</p>
+      </div>
+
+      <div class="source-strip">
+        <strong>SOURCES:</strong> Ulrich &amp; Eppinger, <em>Product Design &amp; Development</em>, Ch. 12 · McDonough &amp; Braungart, <em>Cradle to Cradle</em> · Rossi et al., Herman Miller C2C Method (J. Ind. Ecology) · MDPI 2025 UAV LCA Review · EU LIFE DRONE Project · Empa Biodegradable Drone Study
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="justify-content: center; margin-top: 36px;">
+    <button class="btn" onclick="startRun()">Begin Simulation →</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN: EXTENDED LEARNING (optional deep-dive)
+============================================================ -->
+<section class="screen" id="screenLearn">
+  <div class="round-head">
+    <div class="phase">Supplemental Brief</div>
+    <h2>Two <em>Life Cycles</em>, One Product.</h2>
+    <div class="stepper">OPTIONAL READING<br>≈ 3 MIN</div>
+  </div>
+
+  <div class="columns">
+    <div>
+      <h2>Biological vs. Industrial</h2>
+      <p>McDonough and Braungart argue that every material in a product belongs to one of two metabolisms. The <strong>biological</strong> cycle absorbs organic compounds back into soil, water, and life. The <strong>industrial</strong> cycle keeps synthetic materials circulating among manufacturers forever, with no loss of quality.</p>
+      <p>A cradle-to-cradle product makes the choice explicit: every gram of material has a declared home. Anything that fits neither cycle — a mixed-polymer laminate, a flame-retarded foam, a glued-on coating — is molecular garbage, and the design is not yet finished.</p>
+      <p>For drones, this framing is brutal. The quickest path to lightness is carbon-fiber composites set in thermoset resins, which are essentially <em>un-recyclable</em>. Bio-based flax-fiber composites and thermoplastic CFRP (recyclable via re-melting) change that equation.</p>
+
+      <h2 style="margin-top: 26px;">Where Impact Hides</h2>
+      <p>Ulrich &amp; Eppinger distinguish two product archetypes:</p>
+      <ul style="margin-left: 18px; margin-top: 6px;">
+        <li style="margin-bottom:6px;"><strong>Materials-intensive</strong> products (a laptop) concentrate impact in extraction, processing, and end-of-life.</li>
+        <li><strong>Use-intensive</strong> products (a car) concentrate impact in the operating phase.</li>
+      </ul>
+      <p style="margin-top: 10px;">A survey drone is a <em>hybrid</em>: its frame and battery dominate embodied impact, while its energy use matters when it is flown thousands of hours per year. This simulation makes you weigh both.</p>
+    </div>
+    <div>
+      <h2>The DFE Process</h2>
+      <p>Embed environment into the existing product development flow. Per Ulrich &amp; Eppinger, this is a seven-step loop:</p>
+      <ol style="margin-left: 20px; margin-top: 8px; font-size: 14px;">
+        <li style="margin-bottom: 5px;">Set the DFE agenda during Planning.</li>
+        <li style="margin-bottom: 5px;">Identify potential environmental impacts.</li>
+        <li style="margin-bottom: 5px;">Select material &amp; DFE guidelines.</li>
+        <li style="margin-bottom: 5px;">Apply the guidelines to initial designs.</li>
+        <li style="margin-bottom: 5px;">Assess impact with LCA tools (SimaPro, GaBi, OpenLCA, SolidWorks Sustainability).</li>
+        <li style="margin-bottom: 5px;">Refine, then loop.</li>
+        <li>Reflect after shipping.</li>
+      </ol>
+      <p style="margin-top: 12px;">The simulation's rounds compress this loop. Early rounds cover agenda-setting, impact identification, concept development, and material selection. Later rounds move into system-level guideline application, detail design, production, logistics, and end-of-life — closing the loop.</p>
+
+      <h2 style="margin-top: 26px;">The Benchmarks</h2>
+      <p>A well-designed drone in this simulation will beat its prior attempt on at least four metrics. A great one will achieve <strong>≥ 75%</strong> on Recyclability (Herman Miller's Setu chair reaches 92%), <strong>≥ 50%</strong> on Material Chemistry safety, and finish with positive Environmental and Market scores — without losing the Cost battle.</p>
+
+      <div class="insight">
+        <h4>Beware the heroic material.</h4>
+        <p>A single "green" choice rarely saves a product. A bio-based frame paired with an unrecyclable battery and no take-back program is not circular — it's a marketing slogan. The score penalizes incoherent stacks.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="justify-content: space-between;">
+    <button class="btn ghost" onclick="show('screenPreBrief')">← Back</button>
+    <button class="btn" onclick="startRun()">Begin Simulation →</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN: ROUND (rendered dynamically)
+============================================================ -->
+<section class="screen" id="screenRound">
+  <div class="round-head">
+    <div class="phase" id="roundPhase">Phase 1 · Planning</div>
+    <h2 id="roundTitle">Setting the <em>DFE Agenda</em></h2>
+    <div class="stepper" id="roundStepper">ROUND 1</div>
+  </div>
+
+  <div class="progress" id="progressTrack">
+    <div class="step active" data-l="PLANNING"></div>
+    <div class="step" data-l="CONCEPT"></div>
+    <div class="step" data-l="SYSTEM/DETAIL"></div>
+    <div class="step" data-l="PRODUCTION/EOL"></div>
+  </div>
+
+  <div class="decision-wrap">
+    <div id="decisionHost"><!-- decision cards injected here --></div>
+
+    <aside class="dashboard">
+      <h4>Live Product Dashboard</h4>
+      <div class="metric env"><div class="top"><span class="name">Environment</span><span class="val" id="v-env">—</span></div><div class="bar"><div class="fill" id="f-env"></div></div></div>
+      <div class="metric recy"><div class="top"><span class="name">Recyclability</span><span class="val" id="v-recy">—</span></div><div class="bar"><div class="fill" id="f-recy"></div></div></div>
+      <div class="metric cost"><div class="top"><span class="name">Cost (inverted)</span><span class="val" id="v-cost">—</span></div><div class="bar"><div class="fill" id="f-cost"></div></div></div>
+      <div class="metric perf"><div class="top"><span class="name">Performance</span><span class="val" id="v-perf">—</span></div><div class="bar"><div class="fill" id="f-perf"></div></div></div>
+      <div class="metric mkt"><div class="top"><span class="name">Market Appeal</span><span class="val" id="v-mkt">—</span></div><div class="bar"><div class="fill" id="f-mkt"></div></div></div>
+
+      <div class="mini-note" id="liveNote">Select your first option. The dashboard will update instantly to show the tradeoffs — because in DFE, no choice happens in isolation.</div>
+    </aside>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn ghost small" id="btnBack" onclick="prevDecision()">← Previous</button>
+    <div class="mono" style="font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--stone);" id="decisionCounter">Decision 1</div>
+    <button class="btn small" id="btnNext" onclick="nextDecision()">Next Decision →</button>
+  </div>
+</section>
+
+<!-- ============================================================
+     SCREEN: POST-BRIEF / RESULTS
+============================================================ -->
+<section class="screen" id="screenResults">
+  <div class="results-head">
+    <div>
+      <div style="font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--rust); margin-bottom: 10px;">Post-Brief · Product Launch Review</div>
+      <h2>The <em>Aurora-1</em> is shipping.</h2>
+    </div>
+    <div class="grade-card">
+      <div class="k">Overall Grade</div>
+      <div class="g" id="finalGrade">—</div>
+      <div class="s" id="finalScore">Score: —</div>
+    </div>
+  </div>
+
+  <div class="results-grid">
+    <div class="scorecard">
+      <h3>Final Scorecard</h3>
+      <div id="bigMetrics"><!-- injected --></div>
+
+      <div class="history">
+        <h3>Your Attempts</h3>
+        <table id="historyTable">
+          <thead>
+            <tr><th>#</th><th>Env</th><th>Recy</th><th>Cost</th><th>Perf</th><th>Mkt</th><th>Overall</th><th>Grade</th></tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <p style="font-family:'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--stone); margin-top: 10px;">Saved locally for this course session.</p>
+      </div>
+    </div>
+
+    <div class="feedback-col">
+      <h3>Per-Decision Feedback</h3>
+      <div id="feedbackList"><!-- injected --></div>
+    </div>
+  </div>
+
+  <!-- C2C Assessment -->
+  <div class="assessment">
+    <h3>Cradle-to-Cradle Assessment</h3>
+    <p style="font-size: 13px; color: var(--stone); margin-bottom: 18px;">Scored in the style of the Herman Miller Setu assessment (Rossi et al., 2006). Each axis is weighted equally in this view. The black marker shows where Aurora-1 lands on each continuum.</p>
+
+    <div class="c2c-bar">
+      <div class="hd"><span>Material Chemistry</span><span class="pct" id="c2c-mat-pct">—</span></div>
+      <div class="track"><div class="seg seg-safest"></div><div class="seg seg-low"></div><div class="seg seg-uncert"></div><div class="seg seg-high"></div><div class="marker" id="c2c-mat-mark" style="left:0%"></div></div>
+      <div class="labels"><span>Safest</span><span>Low Hazard</span><span>Uncertain</span><span>High Hazard</span></div>
+    </div>
+    <div class="c2c-bar">
+      <div class="hd"><span>Recycled Material Content</span><span class="pct" id="c2c-rec-pct">—</span></div>
+      <div class="track"><div class="seg seg-post-c"></div><div class="seg seg-post-i"></div><div class="seg seg-virgin"></div><div class="marker" id="c2c-rec-mark" style="left:0%"></div></div>
+      <div class="labels"><span>Post-Consumer</span><span>Post-Industrial</span><span>Virgin</span></div>
+    </div>
+    <div class="c2c-bar">
+      <div class="hd"><span>Disassembly</span><span class="pct" id="c2c-dis-pct">—</span></div>
+      <div class="track"><div class="seg seg-sep"></div><div class="seg seg-time"></div><div class="seg seg-tools"></div><div class="seg seg-label"></div><div class="marker" id="c2c-dis-mark" style="left:0%"></div></div>
+      <div class="labels"><span>Separation</span><span>≤ 30 sec</span><span>Common tools</span><span>Labeled only</span></div>
+    </div>
+    <div class="c2c-bar">
+      <div class="hd"><span>Recyclability</span><span class="pct" id="c2c-rey-pct">—</span></div>
+      <div class="track"><div class="seg seg-up"></div><div class="seg seg-down"></div><div class="seg seg-not"></div><div class="marker" id="c2c-rey-mark" style="left:0%"></div></div>
+      <div class="labels"><span>Upcycle</span><span>Downcycle</span><span>Not feasible</span></div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <h4 id="lessonTitle">The Lesson of This Run</h4>
+    <p id="lessonText">—</p>
+  </div>
+
+  <div class="btn-row" style="justify-content: space-between; margin-top: 32px; flex-wrap: wrap; gap: 12px;">
+    <button class="btn ghost" onclick="show('screenPreBrief')">↺ Return to Brief</button>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+      <button class="btn ghost" onclick="downloadCertificate()">⬇ Download Certificate</button>
+      <button class="btn" onclick="replay()">Try Again · Design a Better Drone →</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>EcoDrone Designer · DFE Simulation v1.0</div>
+  <div id="footerMeta"></div>
+</footer>
+
+</div>
+
+<script>
+/* =================================================================
+   ECODRONE DESIGNER — Simulation Engine
+   ================================================================= */
+
+/* ---------- Decision Data Model ----------
+   Each decision has an id, round, phase, title, context, and options.
+   Each option has label, detail, short tags, effects on 5 metrics
+   (signed numbers summing to a controlled impact), c2c contribution,
+   and feedback strings. Designed so "obvious green" ≠ always best.
+   ------------------------------------------------------------------ */
+
+const DECISIONS = [
+  /* ========== ROUND 1: PLANNING ========== */
+  {
+    id: "d1", round: 0, phase: "Phase 1 · Planning",
+    title: "Set the <em>DFE Agenda</em>",
+    context: "Your first act as product lead. The board is asking where sustainability fits in Aurora-1's charter. Choose the level of ambition — this shapes every subsequent tradeoff.",
+    question: "How aggressive should the DFE agenda be?",
+    options: [
+      {
+        label: "Compliance-only · Meet required regulations, nothing more.",
+        detail: "CE mark, RoHS, WEEE — the minimum. No public commitments. Team has no license to prioritize DFE when it conflicts with schedule.",
+        tags: ["LOW COST", "LOW AMBITION"],
+        eff: { env: -16, recy: -14, cost: +6, perf: 0, mkt: -16 },
+        c2c: { mat: -8, rec: -14, dis: -10, rey: -14 },
+        fb: "bad|Minimum-effort agenda|Treating DFE as a regulatory checkbox forecloses the biggest early-stage decisions. Ulrich & Eppinger argue that setting the DFE agenda during planning is what makes downstream guidelines effective — you've now made them optional."
+      },
+      {
+        label: "Pragmatic · Set a target: 50% recycled content, easy disassembly.",
+        detail: "Commit publicly to a handful of measurable goals. Avoid the hardest commitments (toxic-free, take-back) for now.",
+        tags: ["BALANCED"],
+        eff: { env: +6, recy: +8, cost: +2, perf: +2, mkt: +6 },
+        c2c: { mat: +5, rec: +12, dis: +10, rey: +8 },
+        fb: "good|Measurable, achievable commitments|This is the real-world path most companies take. You've set guardrails without painting yourself into a corner. You've lost the chance to lead the market on toxicity and take-back, but you've protected the project's downside."
+      },
+      {
+        label: "Ambitious · Commit to EPEAT Gold, Cradle-to-Cradle Bronze, take-back.",
+        detail: "Public roadmap with hard deadlines. Every subsequent trade must respect these pillars.",
+        tags: ["HIGH COMMITMENT", "HIGH UPSIDE"],
+        eff: { env: +14, recy: +12, cost: -8, perf: 0, mkt: +14 },
+        c2c: { mat: +12, rec: +12, dis: +15, rey: +15 },
+        fb: "good|A Herman-Miller-grade agenda|Setting the bar high in planning constrains every downstream choice in a healthy way. Herman Miller's Perfect Vision 2020 was announced before they had a path — the commitment forced the innovations. You've just done the same."
+      }
+    ]
+  },
+  {
+    id: "d2", round: 0,
+    title: "Choose the <em>target application</em>",
+    context: "The drone's primary use-case shapes its life-cycle profile. A drone flown 50 hours/year has very different impact math than one flown 2,000 hours/year.",
+    question: "Which mission profile should Aurora-1 be optimized for?",
+    options: [
+      {
+        label: "Consumer hobby & small-business photography",
+        detail: "High unit volumes (100k+/yr), low hours flown per unit. Materials-intensive impact profile.",
+        tags: ["HIGH VOLUME"],
+        eff: { env: -4, recy: +4, cost: +8, perf: 0, mkt: +8 },
+        c2c: { mat: 0, rec: 0, dis: +5, rey: +5 },
+        fb: "warn|Volume amplifies every decision|A hundred thousand drones per year means every gram of toxic material multiplies into tons of landfill. Materials-intensive profile means your biggest leverage is in material chemistry and disassembly — which you'll see become decisive in Round 2."
+      },
+      {
+        label: "Scientific & environmental monitoring (ports, forests, crops)",
+        detail: "Mid volumes (~20k/yr), moderate flight hours, paying customers expect sustainability credentials.",
+        tags: ["ALIGNED MARKET"],
+        eff: { env: +8, recy: +6, cost: -2, perf: +4, mkt: +12 },
+        c2c: { mat: +5, rec: +5, dis: +5, rey: +5 },
+        fb: "good|Market pulling in the right direction|Scientific and environmental customers actively demand sustainability credentials — it's not a cost, it's a feature. The MDPI 2025 port-monitoring drone study explicitly cited modular, recyclable design as a buying criterion."
+      },
+      {
+        label: "Industrial inspection & high-endurance mapping",
+        detail: "Lower volumes (~5k/yr), very high flight hours per unit. Use-intensive profile.",
+        tags: ["USE-INTENSIVE"],
+        eff: { env: +2, recy: +2, cost: -4, perf: +12, mkt: +4 },
+        c2c: { mat: 0, rec: 0, dis: 0, rey: 0 },
+        fb: "warn|The use phase dominates|For use-intensive products, energy efficiency in flight matters more than the embodied carbon of the frame. You'll need to win on battery, motors, and aerodynamics — your best DFE move becomes 'more hours per charge.'"
+      }
+    ]
+  },
+  {
+    id: "d3", round: 0,
+    title: "Form the <em>DFE Team</em>",
+    context: "Who owns environmental decisions? The choice between a dedicated sustainability function vs. distributed ownership changes how DFE gets enforced at every gate review.",
+    question: "How will DFE responsibility be structured?",
+    options: [
+      {
+        label: "Dedicated sustainability lead, sits outside PD team",
+        detail: "One senior hire. Advisory. Attends gate reviews.",
+        tags: ["CLEAR OWNER"],
+        eff: { env: +3, recy: +3, cost: -2, perf: 0, mkt: +4 },
+        c2c: { mat: +2, rec: +2, dis: +2, rey: +2 },
+        fb: "warn|A single advisory role rarely wins internal fights|The lead can block egregious decisions but will struggle to shape upstream choices. Research on DFE adoption (Baeriswyl & Eppinger, 2011) consistently shows embedded ownership outperforms advisory structures."
+      },
+      {
+        label: "DFE champion on every sub-team (mechanical, electrical, supply)",
+        detail: "Every functional team has a named DFE owner who reports both to their lead and to a central steering group.",
+        tags: ["EMBEDDED", "HIGH ALIGNMENT"],
+        eff: { env: +10, recy: +10, cost: -4, perf: +2, mkt: +8 },
+        c2c: { mat: +8, rec: +8, dis: +8, rey: +8 },
+        fb: "good|Distributed ownership + central coordination|This is the model Herman Miller, Nike, and HP converged on independently. Sub-team DFE owners have the technical depth to spot tradeoffs early; central coordination keeps the program coherent."
+      },
+      {
+        label: "Everyone is responsible — no formal DFE roles",
+        detail: "DFE is 'a core value, not a role.' Principles communicated; ownership shared. Hidden cost: late-stage redesigns when DFE gaps are found at gate reviews.",
+        tags: ["DIFFUSE"],
+        eff: { env: -8, recy: -8, cost: -4, perf: 0, mkt: -6 },
+        c2c: { mat: -4, rec: -4, dis: -4, rey: -4 },
+        fb: "bad|When everyone is responsible, no one is|'Diffuse' responsibility is the empirical failure mode: DFE gets traded away first when schedules slip because no specific person pays the cost of giving it up. Late-stage gate reviews then catch problems that require expensive redesigns — so the apparent savings evaporate. This is a well-documented pattern in sustainable PD literature."
+      }
+    ]
+  },
+
+  /* ========== ROUND 2: CONCEPT ========== */
+  {
+    id: "d4", round: 1, phase: "Phase 2 · Concept Development",
+    title: "Choose the <em>primary frame material</em>",
+    context: "The biggest single material choice. Frame is ~35% of mass. Drone industry baseline is thermoset carbon-fiber-reinforced polymer (CFRP) — strong, light, and essentially not recyclable. Your alternatives each trade something.",
+    question: "What becomes the primary frame material?",
+    options: [
+      {
+        label: "Virgin thermoset CFRP · incumbent material",
+        detail: "Best-in-class stiffness-to-weight on paper. Requires energy-intensive production. Not currently recyclable at scale. Inherits regulatory risk under EU ESPR. Performance gap vs. recycled CFRP is marginal (~3-5%) and shrinking.",
+        tags: ["INCUMBENT", "NOT RECYCLABLE"],
+        eff: { env: -16, recy: -20, cost: -6, perf: +4, mkt: -12 },
+        c2c: { mat: -12, rec: -18, dis: -6, rey: -22 },
+        fb: "bad|The incumbent is now the laggard|Virgin thermoset CFRP's marginal stiffness advantage (~3-5% over recycled CFRP) is shrinking annually as reclamation processes mature. Meanwhile, it remains essentially unrecyclable, energy-intensive to produce, and is increasingly regulated under EU ESPR. Choosing it means your whole DFE program is decorative."
+      },
+      {
+        label: "Recycled CFRP · reclaimed carbon fibers in new resin",
+        detail: "Per the MDPI 2025 LCA review, recycled CFRP reduces lifecycle emissions by ~30% vs. virgin. Slightly lower stiffness; supply is limited.",
+        tags: ["LCA: −30%", "EMERGING"],
+        eff: { env: +8, recy: +6, cost: -4, perf: +6, mkt: +6 },
+        c2c: { mat: +2, rec: +14, dis: +3, rey: +5 },
+        fb: "good|Pragmatic, measurable, and available|Recycled CFRP is one of the highest-leverage material swaps available to UAV designers today. You trade a few percent of stiffness for a 30% lifecycle-emissions cut. Cost is moderately higher than virgin CFRP, but falling fast."
+      },
+      {
+        label: "Thermoplastic CFRP · mechanically recyclable via re-melt",
+        detail: "New in aerospace (EU research, 2025). Fully recyclable. Stiffness slightly below thermoset. Manufacturing tooling needs investment.",
+        tags: ["FULLY RECYCLABLE"],
+        eff: { env: +10, recy: +14, cost: -8, perf: +8, mkt: +8 },
+        c2c: { mat: +5, rec: +6, dis: +10, rey: +18 },
+        fb: "good|A cradle-to-cradle-ready composite|Thermoplastic CFRP is the first composite that can be re-melted and reformed without destroying the fiber. You're paying an upfront tooling cost for a material that actually closes its loop — the definition of DFE Rule 1."
+      },
+      {
+        label: "Flax-fiber bio-composite in bio-resin",
+        detail: "Lowest carbon footprint (natural fiber uptake); lower stiffness; UV & moisture sensitive; biodegradable under industrial composting.",
+        tags: ["BIO-BASED", "LOWER PERF"],
+        eff: { env: +14, recy: +8, cost: -2, perf: -8, mkt: +10 },
+        c2c: { mat: +14, rec: +10, dis: +8, rey: +8 },
+        fb: "warn|Green, but is it capable?|Bio-composites are excellent for Rule 2 (return to natural cycles) and score high on chemistry. But they fail the performance bar for industrial-inspection missions and require careful geometry. Match the material to the mission."
+      },
+      {
+        label: "Recycled aluminum · closed-loop smelter",
+        detail: "Fully recyclable, well-understood, but heavier than CFRP — costs endurance. ~50% embodied-carbon savings vs. virgin aluminum.",
+        tags: ["CLOSED LOOP", "HEAVY"],
+        eff: { env: +6, recy: +16, cost: +4, perf: -6, mkt: +4 },
+        c2c: { mat: +8, rec: +16, dis: +12, rey: +18 },
+        fb: "good|A boring, effective choice|Aluminum is already one of the most-recycled materials on Earth. You give up some endurance from the extra weight, but you win hard on recyclability and disassembly — the frame becomes a single, well-labeled material stream."
+      }
+    ]
+  },
+  {
+    id: "d5", round: 1,
+    title: "Choose the <em>battery strategy</em>",
+    context: "Batteries dominate the use phase and create a hazardous end-of-life stream. The EU LIFE DRONE project (2020–2024) demonstrated closed-loop Li-ion recycling — but only for manufacturers who design for it.",
+    question: "What is Aurora-1's battery and power strategy?",
+    options: [
+      {
+        label: "Standard sealed LiPo pack · non-user-swappable",
+        detail: "Cheapest, most energy-dense available. End-of-life: waste stream. Sealing makes service replacement impossible. Fails EU Battery Regulation 2023/1542.",
+        tags: ["CHEAPEST", "EU-NONCOMPLIANT"],
+        eff: { env: -16, recy: -18, cost: +6, perf: +4, mkt: -14 },
+        c2c: { mat: -12, rec: -10, dis: -18, rey: -14 },
+        fb: "bad|A battery you cannot replace is a drone you cannot sustain|Sealed LiPo makes the whole product disposable — when the battery dies at two years, the drone follows. The EU Battery Regulation 2023/1542 makes removable batteries mandatory for most consumer electronics; you've designed a product you cannot sell in Europe."
+      },
+      {
+        label: "Standard LiPo · user-swappable with manufacturer take-back",
+        detail: "Same chemistry, but designed to be removed without tools. Partner with Call2Recycle or equivalent for end-of-life collection.",
+        tags: ["TAKE-BACK"],
+        eff: { env: +6, recy: +10, cost: +2, perf: +6, mkt: +8 },
+        c2c: { mat: 0, rec: +5, dis: +14, rey: +10 },
+        fb: "good|Policy + design working together|Take-back programs like Call2Recycle are only effective when the product is designed to enable them. User-swappable cells without glue or proprietary fasteners are the unlock. The EU Battery Regulation 2023/1542 is making this mandatory in Europe."
+      },
+      {
+        label: "Solid-state Li-ion cells · emerging tech, higher safety",
+        detail: "Higher energy density, safer transport (no liquid electrolyte), but recycling infrastructure for SSBs is still developing and costly.",
+        tags: ["EMERGING", "PREMIUM"],
+        eff: { env: +4, recy: +2, cost: -10, perf: +14, mkt: +8 },
+        c2c: { mat: +4, rec: 0, dis: +8, rey: +5 },
+        fb: "warn|Ahead of the recycling infrastructure|Solid-state batteries are fundamentally more recyclable in theory, but in 2026 the industrial recycling streams don't yet exist at scale for them. You're paying a premium for a cleaner future that hasn't fully arrived — a defensible bet for a premium-positioned product."
+      },
+      {
+        label: "Swappable NMC pack + on-ship energy-monitoring chip",
+        detail: "Medium-density NMC chemistry (nickel-manganese-cobalt). Each pack carries an ID chip tracking charge cycles, enabling second-life stationary-storage applications.",
+        tags: ["SECOND-LIFE", "EU-ALIGNED"],
+        eff: { env: +12, recy: +14, cost: -4, perf: +6, mkt: +12 },
+        c2c: { mat: +6, rec: +10, dis: +14, rey: +15 },
+        fb: "good|Second-life is the killer feature|A drone battery at 70% capacity is still useful for off-grid stationary storage. The ID chip transforms your battery from a cost center into an asset with a resale path. This is the model the EU LIFE DRONE project built its recovery chain around."
+      }
+    ]
+  },
+  {
+    id: "d6", round: 1,
+    title: "Select <em>electronics &amp; PCB strategy</em>",
+    context: "PCBs contain heavy metals, flame retardants, and soldered multi-material stacks that resist recycling. Choices here determine whether the drone's brain becomes e-waste or a recoverable material stream.",
+    question: "How are the main electronics designed?",
+    options: [
+      {
+        label: "Standard leaded-solder PCB · lowest-cost components",
+        detail: "Fastest to source, cheapest. Fails RoHS in most markets. High toxicity. Effectively illegal in EU, CA, JP.",
+        tags: ["TOXIC", "NON-COMPLIANT"],
+        eff: { env: -18, recy: -14, cost: +6, perf: 0, mkt: -22 },
+        c2c: { mat: -22, rec: -8, dis: -10, rey: -12 },
+        fb: "bad|You cannot ship this anywhere|Leaded solder fails RoHS in the EU, California, Japan, Korea, and most developed markets. Even setting aside DFE, this is a product that is literally unsellable. Market penalty reflects the reality that you've designed a drone for a shrinking set of permissive jurisdictions."
+      },
+      {
+        label: "Lead-free solder · RoHS-compliant · standard FR-4 board",
+        detail: "Meets the floor of international regulation. FR-4 (epoxy-glass) boards are recyclable only with significant loss.",
+        tags: ["ROHS"],
+        eff: { env: +2, recy: 0, cost: +4, perf: +2, mkt: +4 },
+        c2c: { mat: +4, rec: 0, dis: 0, rey: 0 }
+      },
+      {
+        label: "Lead-free + halogen-free + modular 'snap-out' daughterboards",
+        detail: "Main functions on removable boards (flight controller, GPS, imaging). Easier service; each module is its own recycling stream.",
+        tags: ["MODULAR", "SERVICEABLE"],
+        eff: { env: +10, recy: +12, cost: -4, perf: +6, mkt: +10 },
+        c2c: { mat: +10, rec: +4, dis: +16, rey: +12 },
+        fb: "good|Modularity is circularity's ally|By breaking the electronics into distinct modules, you let customers repair rather than replace, and you give end-of-life recyclers homogeneous material streams. This was Herman Miller's Setu insight applied to silicon."
+      },
+      {
+        label: "Biodegradable cellulose-substrate PCB (research-grade)",
+        detail: "Empa Labs demonstrated printed sensors on cellulose in 2023. Impressive, not yet at production scale. Flight-controller electronics still need FR-4 anyway.",
+        tags: ["R&D RISK"],
+        eff: { env: +8, recy: +4, cost: -14, perf: -10, mkt: +6 },
+        c2c: { mat: +6, rec: +2, dis: +4, rey: +2 },
+        fb: "warn|Beautiful research, premature for production|The Empa biodegradable drone is a landmark paper (2023) but its cellulose substrate can't yet carry the power electronics Aurora-1 needs. Signalling virtue here costs you performance and cost without much closed-loop benefit yet."
+      }
+    ]
+  },
+
+  /* ========== ROUND 3: SYSTEM + DETAIL DESIGN ========== */
+  {
+    id: "d7", round: 2, phase: "Phase 3 · System &amp; Detail Design",
+    title: "Design the <em>housing &amp; fasteners</em>",
+    context: "Ulrich & Eppinger's DFE guidelines: enable easy disassembly into separate material recycling streams. Don't combine incompatible materials. Label everything.",
+    question: "How are the outer housings joined?",
+    options: [
+      {
+        label: "Ultrasonic welds + adhesive seals",
+        detail: "Strongest seal, lightest. Permanent — impossible to disassemble without destroying parts. Kills recyclability.",
+        tags: ["PERMANENT", "NON-SERVICEABLE"],
+        eff: { env: -10, recy: -20, cost: +4, perf: +2, mkt: -10 },
+        c2c: { mat: 0, rec: 0, dis: -22, rey: -16 },
+        fb: "bad|A housing you cannot open is a product you cannot recycle|Ultrasonic welds and adhesives turn a multi-material drone into a single-unit waste stream. Ulrich & Eppinger's DFE guidelines (Ch. 12) are explicit: enable easy disassembly into separate material recycling streams. You've done the opposite."
+      },
+      {
+        label: "Snap-fit + self-tapping screws (8 fasteners, 3 types)",
+        detail: "Conventional drone approach. Separable with common tools. Fastener variety slows disassembly.",
+        tags: ["TYPICAL"],
+        eff: { env: +2, recy: +4, cost: +2, perf: +2, mkt: +2 },
+        c2c: { mat: 0, rec: 0, dis: +2, rey: +4 }
+      },
+      {
+        label: "Single-tool disassembly: 4 captive screws, one Torx bit",
+        detail: "Per Herman Miller Setu DFE assessment (86% easily-separable): enable disassembly with one common tool in under 30 seconds.",
+        tags: ["SETU-STYLE"],
+        eff: { env: +10, recy: +16, cost: -2, perf: 0, mkt: +10 },
+        c2c: { mat: 0, rec: 0, dis: +20, rey: +16 },
+        fb: "good|A direct Setu-chair parallel|Herman Miller's benchmark for disassembly was one common tool, under 30 seconds per part. You've applied the same principle. Recyclers now get clean, separable material streams — the precondition for everything else in the C2C model."
+      },
+      {
+        label: "Tool-free: all parts are snap-fit with release tabs",
+        detail: "No fasteners at all. Risk: consumer confusion, accidental disassembly, durability concerns under vibration.",
+        tags: ["RADICAL"],
+        eff: { env: +8, recy: +10, cost: +4, perf: -8, mkt: 0 },
+        c2c: { mat: 0, rec: 0, dis: +15, rey: +10 },
+        fb: "warn|Disassembly benefit offset by durability risk|Tool-free housings on a high-vibration product like a drone are engineering-risky. You've bet on recyclability at the cost of in-use reliability. The Herman Miller compromise — one tool, one bit — was a more defensible middle ground."
+      }
+    ]
+  },
+  {
+    id: "d8", round: 2,
+    title: "Choose the <em>propeller &amp; motor material</em>",
+    context: "Propellers wear out and are replaced often — they are a recurring consumable. Motor magnets typically contain neodymium, a critical and geographically-concentrated raw material.",
+    question: "What is the spec for props and motors?",
+    options: [
+      {
+        label: "Standard polycarbonate props + neodymium magnets",
+        detail: "Industry standard. Props are crash-consumable waste stream that customers keep buying; magnets contain ~30% critical rare-earths sourced from concentrated geographies. Spare-parts logistics eat margin.",
+        tags: ["BASELINE", "CRM-EXPOSED"],
+        eff: { env: -10, recy: -8, cost: -2, perf: +4, mkt: -8 },
+        c2c: { mat: -4, rec: -4, dis: 0, rey: -6 },
+        fb: "bad|Status-quo thinking has a carbon price now|Props and motors together are ~20% of the drone's recurring replacement stream. Standard polycarbonate props going to landfill, plus neodymium from concentrated geographies, leaves you exposed to both EU ESPR requirements and Critical Raw Materials Act pressure. Global spare-parts logistics also erase the nominal cost savings."
+      },
+      {
+        label: "PLA bio-plastic props (3D-printable) + standard NdFeB motors",
+        detail: "Field-printable replacement props (Louisiana Tech University design, 2023). Standard motors retained.",
+        tags: ["FIELD-PRINTABLE"],
+        eff: { env: +8, recy: +4, cost: +2, perf: -2, mkt: +8 },
+        c2c: { mat: +6, rec: +4, dis: +4, rey: +4 },
+        fb: "good|Composting props + on-site replacement|The Louisiana Tech 3D-printed bioplastic drone (2023) demonstrated that a crashed prop is no longer a waste event — it is a compostable input. On-site replacement also cuts logistics emissions from spare-parts shipping."
+      },
+      {
+        label: "Recycled polycarbonate props + rare-earth-recovered motors",
+        detail: "Props from ocean-bound plastic feedstock. Motors sourced from supplier running neodymium reclamation from end-of-life electronics.",
+        tags: ["CRITICAL-MAT"],
+        eff: { env: +10, recy: +10, cost: -4, perf: +4, mkt: +10 },
+        c2c: { mat: +6, rec: +14, dis: +4, rey: +10 },
+        fb: "good|Addressing critical-raw-materials risk|Neodymium reclamation is one of the highest-leverage moves in UAV supply chains. You've reduced dependence on concentrated geographies (the EU Critical Raw Materials Act cites NdFeB as priority). Your supply chain is now an asset."
+      },
+      {
+        label: "Carbon-fiber props + rare-earth-free ferrite motors",
+        detail: "CF props: lighter, more rigid, 2x price. Ferrite motors: no rare-earths but 40% heavier for same torque.",
+        tags: ["NO-REE", "HEAVIER"],
+        eff: { env: +4, recy: +2, cost: -8, perf: -4, mkt: +4 },
+        c2c: { mat: +8, rec: 0, dis: +2, rey: -2 },
+        fb: "warn|Eliminating rare-earths costs performance|Ferrite motors completely avoid critical raw materials — an admirable goal — but cost you 40% efficiency. For a drone, that is flight time. Rare-earth *reclamation* (option above) usually beats rare-earth *avoidance* on net impact."
+      }
+    ]
+  },
+  {
+    id: "d9", round: 2,
+    title: "Plan <em>material labeling &amp; documentation</em>",
+    context: "Ulrich & Eppinger DFE guideline: label all component materials for recycling. Herman Miller's Setu exceeded 86% easily-separable by ensuring every plastic part bore a recycling code.",
+    question: "What is the labeling and documentation plan?",
+    options: [
+      {
+        label: "Standard labels only · model number on main housing",
+        detail: "Minimum to meet RoHS. No plastic resin codes on individual parts. Recyclers must guess at material composition. Fails forthcoming EU Digital Product Passport regulation.",
+        tags: ["MINIMUM", "DPP-FAIL"],
+        eff: { env: -8, recy: -16, cost: +2, perf: 0, mkt: -12 },
+        c2c: { mat: -2, rec: 0, dis: -18, rey: -14 },
+        fb: "bad|Unlabeled parts are unrecyclable parts|Recyclers cannot sort what they cannot identify. Molded-in resin codes cost nothing additional to manufacture but are the single gate between 'mixed plastic to landfill' and 'sorted streams to closed loop.' Skipping them undoes the work of every better material choice upstream, and fails EU Digital Product Passport requirements effective 2027."
+      },
+      {
+        label: "Resin codes molded into every plastic part + published BOM",
+        detail: "ISO-standard resin ID codes. Bill of materials public for recyclers. Standard C2C practice.",
+        tags: ["C2C-STD"],
+        eff: { env: +4, recy: +12, cost: 0, perf: 0, mkt: +6 },
+        c2c: { mat: +4, rec: 0, dis: +14, rey: +12 },
+        fb: "good|Recyclers cannot recycle what they cannot identify|Molded resin codes are cheap (no added manufacturing step), but they shift your end-of-life from 'mixed plastic → landfill' to 'sorted streams → closed loop.' Publishing the BOM makes you a good citizen of the recycling ecosystem."
+      },
+      {
+        label: "Resin codes + QR-linked digital product passport",
+        detail: "Meets EU Digital Product Passport regulations (effective 2027). Full material composition, repair guides, and take-back routing accessible via QR.",
+        tags: ["DPP-READY", "FUTURE-PROOF"],
+        eff: { env: +8, recy: +14, cost: -6, perf: 0, mkt: +14 },
+        c2c: { mat: +4, rec: +4, dis: +16, rey: +16 },
+        fb: "good|You've just future-proofed the product|The EU Digital Product Passport becomes mandatory for most electronics by 2027. By building it in now, you avoid a costly retrofit and you hand recyclers, repairers, and customers a single source of truth. Market differentiation bonus."
+      }
+    ]
+  },
+
+  /* ========== ROUND 4: PRODUCTION + END-OF-LIFE ========== */
+  {
+    id: "d10", round: 3, phase: "Phase 4 · Production &amp; End-of-Life",
+    title: "Choose the <em>manufacturing energy source</em>",
+    context: "Herman Miller's Perfect Vision 2020 committed to 100% green electrical energy for production. Per MDPI 2025, shifting UAV manufacturing from coal-dominated (60% in 2025) to renewable grid cuts operational emissions by ~90%.",
+    question: "Where is Aurora-1 manufactured?",
+    options: [
+      {
+        label: "Lowest-bidder contract manufacturer (coal-heavy grid)",
+        detail: "Cheapest per-unit assembly on paper. Grid mix ~70% coal. Long sea freight to target markets. CBAM tariffs, EPEAT disqualification, and institutional-buyer exclusions erase the apparent cost advantage.",
+        tags: ["HIGH REGULATORY RISK", "CBAM-EXPOSED"],
+        eff: { env: -26, recy: -4, cost: -2, perf: -2, mkt: -18 },
+        c2c: { mat: -4, rec: 0, dis: 0, rey: -4 },
+        fb: "bad|The cost savings evaporate under regulation|Per MDPI 2025, coal-dominated UAV manufacturing contributes ~60% of operational carbon footprint. On top of that, EU CBAM tariffs (effective 2026) add ~12% to imported goods' carbon costs, EPEAT certification becomes impossible, and institutional buyers are increasingly required to source from clean-grid suppliers. The nominal unit-cost savings disappear by launch."
+      },
+      {
+        label: "Regional manufacturer with renewable-PPA (80% wind/solar)",
+        detail: "Contracted renewable power. Slightly higher per-unit cost. Shorter freight.",
+        tags: ["RENEWABLE"],
+        eff: { env: +14, recy: +2, cost: -4, perf: 0, mkt: +10 },
+        c2c: { mat: +2, rec: +2, dis: 0, rey: +2 },
+        fb: "good|Aligned with Herman Miller's model|Contracting renewable power is the single highest-leverage DFE move for a use-intensive or hybrid product. You've cut the production-phase carbon footprint by ~90% per MDPI 2025 projections. This is the baseline for any serious DFE program."
+      },
+      {
+        label: "In-house facility, 100% on-site solar + battery",
+        detail: "Huge capex, full control of emissions, qualifies for LEED Gold. Unit cost rises.",
+        tags: ["C2C-GOLD"],
+        eff: { env: +16, recy: +4, cost: -16, perf: 0, mkt: +14 },
+        c2c: { mat: +4, rec: +4, dis: +2, rey: +4 },
+        fb: "good|This is the Perfect-Vision-2020 playbook|Full in-house renewable production is the gold standard but costs dearly upfront. Appropriate for premium-positioned product lines or brand-halo plays. Herman Miller reached this goal over a decade, not in a first product."
+      }
+    ]
+  },
+  {
+    id: "d11", round: 3,
+    title: "Design the <em>packaging</em>",
+    context: "Puma's Clever Little Bag cut cardboard by 65%. Ulrich & Eppinger DFE guidelines: reduce weight and size for shipping; eliminate laminated printing; eliminate unnecessary packaging entirely.",
+    question: "What is Aurora-1's packaging?",
+    options: [
+      {
+        label: "Standard molded-foam insert + printed color box",
+        detail: "Maximum shelf appeal. Foam is polystyrene (non-recyclable in most municipalities). Full-color offset printing.",
+        tags: ["SHELF-READY"],
+        eff: { env: -12, recy: -8, cost: +4, perf: 0, mkt: -4 },
+        c2c: { mat: -10, rec: -6, dis: 0, rey: -8 },
+        fb: "bad|Packaging is the invisible DFE failure|Polystyrene foam is non-recyclable in most municipalities and persists for centuries. Yves Béhar's Puma Clever Little Bag cut packaging by 65% while improving the unboxing experience — there is no tradeoff here, only inertia."
+      },
+      {
+        label: "Molded pulp inserts (recycled paper) + single-color printed kraft box",
+        detail: "All components recyclable curbside. Pulp insert is home-compostable. Lower shelf presence.",
+        tags: ["CURBSIDE-OK"],
+        eff: { env: +10, recy: +10, cost: +2, perf: 0, mkt: +8 },
+        c2c: { mat: +8, rec: +10, dis: 0, rey: +10 },
+        fb: "good|The Samsung Reclaim approach|Samsung's Reclaim phone packaged with recycled paper and soy ink was a 2009 benchmark. Your molded-pulp insert replaces a toxic material with a home-compostable one, and cuts packaging mass by an estimated 35%."
+      },
+      {
+        label: "Clever-Little-Bag-style reusable shipping pouch + kraft cradle",
+        detail: "Inspired by Yves Béhar's Puma packaging (2011). 65% less material than standard box. Pouch is a reusable drone carry-bag.",
+        tags: ["PUMA-STYLE", "DUAL-USE"],
+        eff: { env: +14, recy: +12, cost: +4, perf: +2, mkt: +14 },
+        c2c: { mat: +10, rec: +10, dis: +2, rey: +12 },
+        fb: "good|Packaging becomes a product feature|When the packaging is also the carry case, you have effectively eliminated the packaging as a waste stream — it travels with the drone for its entire life. Puma's Clever Little Bag became a design-industry case study for exactly this reason."
+      }
+    ]
+  },
+  {
+    id: "d12", round: 3,
+    title: "Design the <em>end-of-life program</em>",
+    context: "Patagonia and Dunlop built take-back systems into their products decades ago. For electronics, EU and California regulations now make Extended Producer Responsibility (EPR) mandatory. This is the gate that makes the whole loop close — or not.",
+    question: "How does Aurora-1 end its life?",
+    options: [
+      {
+        label: "No program — customers handle e-waste locally",
+        detail: "Company ships the product, takes payment, walks away. Most drones end up in landfill. Non-compliant with emerging EPR laws.",
+        tags: ["OPEN-LOOP", "EPR-NONCOMPLIANT"],
+        eff: { env: -18, recy: -22, cost: +4, perf: 0, mkt: -20 },
+        c2c: { mat: 0, rec: 0, dis: 0, rey: -22 },
+        fb: "bad|You designed the drone. Then you designed the waste.|Abandoning end-of-life is the single most expensive DFE mistake. Extended Producer Responsibility laws in the EU, California, and a dozen US states now force take-back. You'll pay for this either as a fine later or a compliance retrofit before launch."
+      },
+      {
+        label: "Prepaid return label + partnership with a certified e-waste recycler",
+        detail: "Customers can ship the drone back for free. Partner handles material recovery. No financial incentive to participate.",
+        tags: ["OPT-IN"],
+        eff: { env: +8, recy: +10, cost: -2, perf: 0, mkt: +6 },
+        c2c: { mat: +4, rec: +6, dis: +4, rey: +10 },
+        fb: "good|A baseline EPR program|Free-shipping return + certified recycler is the entry-level EPR program. Adoption rates for opt-in programs typically sit around 15–25% — so most drones still end up in landfill. Better than nothing; not yet closed-loop."
+      },
+      {
+        label: "Trade-in credit toward next drone + component harvest to refurbished line",
+        detail: "Patagonia-style take-back + Dunlop-style remanufacture. Returned drones are triaged: resellable parts go into refurbished 'Aurora-R' line; rest goes to recycler.",
+        tags: ["CIRCULAR", "REVENUE"],
+        eff: { env: +16, recy: +18, cost: +2, perf: 0, mkt: +16 },
+        c2c: { mat: +8, rec: +12, dis: +12, rey: +20 },
+        fb: "good|You just built a revenue stream out of end-of-life|Trade-in with credit achieves adoption rates of 60–80% (vs. 15–25% for opt-in return). Harvested components feed a refurbished-product line — Patagonia's Worn Wear and Dunlop's recycled-Wellington models show this generates net positive margin while closing the loop."
+      },
+      {
+        label: "Mission-complete biodegradation for environmental-monitoring variant",
+        detail: "Empa-style transient drone: for one-way missions into protected ecosystems, the drone is designed to decompose in-situ. Niche segment only.",
+        tags: ["NICHE", "RESEARCH"],
+        eff: { env: +10, recy: +4, cost: -10, perf: -8, mkt: +8 },
+        c2c: { mat: +16, rec: +4, dis: +8, rey: +8 },
+        fb: "warn|Brilliant for one mission profile, not for your main market|The Empa transient drone (2023) is a landmark of DFE Rule 2 — return to natural cycles. But it only makes sense when the drone is flown *once*, into terrain where recovery is impossible. For Aurora-1's primary market, the trade-in-and-remanufacture model yields a bigger lifecycle impact reduction."
+      }
+    ]
+  }
+];
+
+/* =================================================================
+   Baselines and scoring
+   ================================================================= */
+
+const BASE = { env: 50, recy: 50, cost: 50, perf: 50, mkt: 50 };
+const C2C_BASE = { mat: 30, rec: 15, dis: 30, rey: 20 };
+
+const WEIGHTS = { env: 0.28, recy: 0.24, cost: 0.15, perf: 0.18, mkt: 0.15 };
+
+let STATE = {
+  currentDecision: 0,
+  choices: {},      // { decisionId: optionIndex }
+  metrics: { ...BASE },
+  c2c: { ...C2C_BASE },
+  attemptNumber: 1,
+  studentName: "",
+  lastResult: null, // populated at finalize — used by certificate
+};
+
+let HISTORY = []; // list of past runs
+
+/* ---------- Persistence ---------- */
+async function loadHistory() {
+  try {
+    if (window.storage) {
+      const res = await window.storage.get("ecodrone-history");
+      if (res && res.value) HISTORY = JSON.parse(res.value);
+    }
+  } catch(e) { HISTORY = []; }
+  try {
+    if (window.storage) {
+      const a = await window.storage.get("ecodrone-attempt");
+      if (a && a.value) STATE.attemptNumber = parseInt(a.value) || 1;
+    }
+  } catch(e) {}
+  try {
+    if (window.storage) {
+      const n = await window.storage.get("ecodrone-name");
+      if (n && n.value) STATE.studentName = String(n.value);
+    }
+  } catch(e) {}
+  // Pre-fill name input if we have a stored name
+  const nameInput = document.getElementById("studentNameInput");
+  if (nameInput && STATE.studentName) nameInput.value = STATE.studentName;
+  updateAttemptDisplay();
+}
+
+async function saveHistory() {
+  try {
+    if (window.storage) {
+      await window.storage.set("ecodrone-history", JSON.stringify(HISTORY));
+      await window.storage.set("ecodrone-attempt", String(STATE.attemptNumber + 1));
+    }
+  } catch(e) { /* offline OK */ }
+}
+
+function updateAttemptDisplay() {
+  const el = document.getElementById("attemptCount");
+  if (el) el.textContent = `ATTEMPT ${STATE.attemptNumber}`;
+}
+
+/* =================================================================
+   Screen management
+   ================================================================= */
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const el = document.getElementById(id);
+  if (el) el.classList.add("active");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function submitName() {
+  const input = document.getElementById("studentNameInput");
+  const err = document.getElementById("nameError");
+  const raw = (input.value || "").trim();
+  if (!raw) {
+    err.style.display = "block";
+    input.focus();
+    return;
+  }
+  // Cap length to prevent certificate overflow
+  STATE.studentName = raw.slice(0, 60);
+  // Persist
+  try {
+    if (window.storage) window.storage.set("ecodrone-name", STATE.studentName);
+  } catch(e) {}
+  show("screenPreBrief");
+}
+
+function startRun() {
+  // If no name on file, route to welcome screen first
+  if (!STATE.studentName) {
+    show("screenWelcome");
+    setTimeout(() => {
+      const el = document.getElementById("studentNameInput");
+      if (el) el.focus();
+    }, 150);
+    return;
+  }
+  STATE.currentDecision = 0;
+  STATE.choices = {};
+  STATE.metrics = { ...BASE };
+  STATE.c2c = { ...C2C_BASE };
+  show("screenRound");
+  renderDecision();
+}
+
+function replay() {
+  STATE.attemptNumber += 1;
+  updateAttemptDisplay();
+  startRun();
+}
+
+/* =================================================================
+   Decision rendering
+   ================================================================= */
+function renderDecision() {
+  const d = DECISIONS[STATE.currentDecision];
+
+  // Round header
+  const phaseEl = document.getElementById("roundPhase");
+  const titleEl = document.getElementById("roundTitle");
+  const stepperEl = document.getElementById("roundStepper");
+
+  // Walk backward for phase if this decision doesn't carry one
+  let phaseText = d.phase;
+  if (!phaseText) {
+    for (let i = STATE.currentDecision; i >= 0; i--) {
+      if (DECISIONS[i].phase) { phaseText = DECISIONS[i].phase; break; }
+    }
+  }
+  phaseEl.textContent = phaseText;
+  titleEl.innerHTML = d.title;
+  stepperEl.innerHTML = `ROUND ${d.round + 1}<br><span style="color:var(--ink);font-weight:600;">${roundName(d.round)}</span>`;
+
+  // Progress track
+  document.querySelectorAll("#progressTrack .step").forEach((s, i) => {
+    s.classList.remove("done", "active");
+    if (i < d.round) s.classList.add("done");
+    if (i === d.round) s.classList.add("active");
+  });
+
+  // Decision card
+  const host = document.getElementById("decisionHost");
+  host.innerHTML = `
+    <div class="decision-card">
+      <div class="qnum">DECISION ${STATE.currentDecision + 1}</div>
+      <h3>${d.question}</h3>
+      <div class="context">${d.context}</div>
+      <div class="options">
+        ${d.options.map((o, i) => `
+          <div class="option ${STATE.choices[d.id] === i ? 'chosen' : ''}" data-i="${i}" onclick="chooseOption(${i})">
+            <div class="opt-mark"></div>
+            <div class="opt-body">
+              <div class="opt-label">${o.label}</div>
+              <div class="opt-detail">${o.detail}</div>
+            </div>
+            <div class="opt-tags">
+              ${(o.tags || []).map(t => `<span>${t}</span>`).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+
+  // Counter
+  document.getElementById("decisionCounter").textContent = `Decision ${STATE.currentDecision + 1}`;
+
+  // Nav buttons
+  document.getElementById("btnBack").style.visibility = STATE.currentDecision === 0 ? "hidden" : "visible";
+  const isLast = STATE.currentDecision === DECISIONS.length - 1;
+  const btnNext = document.getElementById("btnNext");
+  btnNext.textContent = isLast ? "Finalize & View Results →" : "Next Decision →";
+  btnNext.disabled = (STATE.choices[d.id] === undefined);
+  btnNext.style.opacity = btnNext.disabled ? 0.4 : 1;
+  btnNext.style.cursor = btnNext.disabled ? 'not-allowed' : 'pointer';
+
+  updateDashboard();
+}
+
+function roundName(r) {
+  return ["Planning","Concept","Detail Design","Production & EoL"][r] || "";
+}
+
+function chooseOption(i) {
+  const d = DECISIONS[STATE.currentDecision];
+  // If already chose something, subtract old effect
+  if (STATE.choices[d.id] !== undefined) {
+    const oldOpt = d.options[STATE.choices[d.id]];
+    applyEffects(oldOpt, -1);
+  }
+  // Apply new effect
+  const opt = d.options[i];
+  applyEffects(opt, +1);
+  STATE.choices[d.id] = i;
+
+  renderDecision(); // re-render for chosen styling
+  // Live note
+  const noteEl = document.getElementById("liveNote");
+  noteEl.innerHTML = `<strong style="color:var(--moss);">Chose:</strong> ${opt.label.split("·")[0].trim()}<br><span style="color:var(--stone);">Dashboard updated. You can change your mind or advance.</span>`;
+}
+
+function applyEffects(opt, sign) {
+  if (!opt) return;
+  for (const k of Object.keys(opt.eff)) {
+    STATE.metrics[k] = clamp(STATE.metrics[k] + sign * opt.eff[k], 0, 100);
+  }
+  if (opt.c2c) {
+    for (const k of Object.keys(opt.c2c)) {
+      STATE.c2c[k] = clamp(STATE.c2c[k] + sign * opt.c2c[k], 0, 100);
+    }
+  }
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+/* =================================================================
+   Dashboard
+   ================================================================= */
+function updateDashboard() {
+  const m = STATE.metrics;
+  setMetric("env", m.env);
+  setMetric("recy", m.recy);
+  setMetric("cost", m.cost);
+  setMetric("perf", m.perf);
+  setMetric("mkt", m.mkt);
+}
+function setMetric(k, v) {
+  const fill = document.getElementById("f-"+k);
+  const val  = document.getElementById("v-"+k);
+  if (fill) fill.style.width = v + "%";
+  if (val)  val.textContent = Math.round(v);
+}
+
+/* =================================================================
+   Navigation
+   ================================================================= */
+function nextDecision() {
+  const d = DECISIONS[STATE.currentDecision];
+  if (STATE.choices[d.id] === undefined) return;
+  if (STATE.currentDecision === DECISIONS.length - 1) {
+    finalize();
+    return;
+  }
+  STATE.currentDecision++;
+  renderDecision();
+}
+function prevDecision() {
+  if (STATE.currentDecision === 0) return;
+  STATE.currentDecision--;
+  renderDecision();
+}
+
+/* =================================================================
+   Results
+   ================================================================= */
+function finalize() {
+  // Compute base overall
+  const m = STATE.metrics;
+  const baseOverall =
+    m.env * WEIGHTS.env +
+    m.recy * WEIGHTS.recy +
+    m.cost * WEIGHTS.cost +
+    m.perf * WEIGHTS.perf +
+    m.mkt * WEIGHTS.mkt;
+
+  // --- DFE COHERENCE PENALTY ---
+  // Count how many "bad" (anti-DFE) choices the student made.
+  // Each bad choice applies a compounding penalty to the overall score.
+  // This reflects the pedagogical principle that DFE is a coherent program,
+  // not a points game — a single bad choice is recoverable, but three or four
+  // "cost-arbitrage" decisions mean the DFE agenda has been abandoned.
+  let badChoices = 0;
+  DECISIONS.forEach(d => {
+    const idx = STATE.choices[d.id];
+    if (idx === undefined) return;
+    const opt = d.options[idx];
+    if (opt.fb && opt.fb.startsWith("bad")) badChoices++;
+  });
+  // Penalty: 0 bad = 1.00x, 1 bad = 0.96x, 2 bad = 0.90x, 3 bad = 0.82x, 4+ bad = 0.72x
+  const penaltyTable = [1.00, 0.96, 0.90, 0.82, 0.72, 0.62, 0.55];
+  const penaltyMultiplier = penaltyTable[Math.min(badChoices, penaltyTable.length - 1)];
+  const overall = baseOverall * penaltyMultiplier;
+
+  const grade = scoreToGrade(overall);
+
+  // Record in history
+  const record = {
+    attempt: STATE.attemptNumber,
+    metrics: { ...m },
+    overall: overall,
+    grade: grade,
+    choices: { ...STATE.choices },
+    date: new Date().toISOString()
+  };
+  HISTORY.push(record);
+  saveHistory();
+
+  // Render results
+  document.getElementById("finalGrade").textContent = grade;
+  document.getElementById("finalScore").textContent = `Score: ${overall.toFixed(1)}`;
+
+  // Big metrics
+  const bm = document.getElementById("bigMetrics");
+  const metricDefs = [
+    { k: "env",  name: "Environmental Impact",  dsc: "Carbon footprint, toxicity, resource depletion", color: "var(--moss)" },
+    { k: "recy", name: "Recyclability",        dsc: "Closed-loop potential, disassembly, take-back", color: "var(--leaf)" },
+    { k: "cost", name: "Cost Efficiency",       dsc: "Unit cost at target volume (higher = cheaper)", color: "var(--rust)" },
+    { k: "perf", name: "Performance",           dsc: "Flight time, payload, reliability", color: "var(--amber)" },
+    { k: "mkt",  name: "Market Appeal",         dsc: "Certifications, brand, buyer perception", color: "var(--ink)" }
+  ];
+  bm.innerHTML = metricDefs.map(def => `
+    <div class="big-metric">
+      <div>
+        <div class="nm">${def.name}</div>
+        <div class="dsc">${def.dsc}</div>
+      </div>
+      <div class="score">${Math.round(m[def.k])}</div>
+      <div class="bar"><div class="fill" style="width:${m[def.k]}%;background:${def.color};"></div></div>
+    </div>
+  `).join("");
+
+  // Coherence indicator
+  const coherencePct = Math.round(penaltyMultiplier * 100);
+  const coherenceLabel = badChoices === 0 ? "Fully Coherent" :
+                          badChoices === 1 ? "Minor Incoherence" :
+                          badChoices === 2 ? "Leaking" :
+                          badChoices === 3 ? "Fragmented" : "Incoherent";
+  const coherenceColor = badChoices === 0 ? "var(--good)" :
+                          badChoices <= 2 ? "var(--warn)" : "var(--hazard)";
+  bm.innerHTML += `
+    <div class="big-metric" style="margin-top: 8px; padding-top: 16px; border-top: 2px solid var(--ink); border-bottom: 0;">
+      <div>
+        <div class="nm" style="color:${coherenceColor};">DFE Coherence · ${coherenceLabel}</div>
+        <div class="dsc">${badChoices} anti-DFE decision${badChoices === 1 ? '' : 's'} × penalty multiplier ${penaltyMultiplier.toFixed(2)} applied to base score ${baseOverall.toFixed(1)}</div>
+      </div>
+      <div class="score" style="color:${coherenceColor};">${coherencePct}%</div>
+    </div>
+  `;
+
+  // Per-decision feedback (only options with fb)
+  const fbList = document.getElementById("feedbackList");
+  const fbItems = [];
+  DECISIONS.forEach((d, idx) => {
+    const choiceIdx = STATE.choices[d.id];
+    if (choiceIdx === undefined) return;
+    const opt = d.options[choiceIdx];
+    let tone = "warn", ttl = "", bd = "";
+    if (opt.fb) {
+      const parts = opt.fb.split("|");
+      tone = parts[0];
+      ttl = parts[1] || "";
+      bd = parts[2] || "";
+    } else {
+      // Neutral stub if no fb provided
+      const scoreish = (opt.eff.env + opt.eff.recy + opt.eff.mkt) - Math.abs(opt.eff.cost)/2;
+      tone = scoreish > 6 ? "good" : scoreish < -6 ? "bad" : "warn";
+      ttl = opt.label.split("·")[0].trim();
+      bd = "A middle-of-the-road choice. Consider more ambitious alternatives next run.";
+    }
+    fbItems.push(`
+      <div class="fb-item ${tone}">
+        <div class="hd"><span>Decision ${idx+1} · ${stripHtml(d.title).replace(/the /i,'').trim()}</span><span>${tone.toUpperCase()}</span></div>
+        <div class="ttl">${ttl}</div>
+        <div class="bd">${bd}</div>
+      </div>
+    `);
+  });
+  fbList.innerHTML = fbItems.join("");
+
+  // C2C bars
+  setC2C("mat", STATE.c2c.mat, true);  // safest→high (invert)
+  setC2C("rec", STATE.c2c.rec, false);
+  setC2C("dis", STATE.c2c.dis, false);
+  setC2C("rey", STATE.c2c.rey, false);
+
+  // History table
+  renderHistory();
+
+  // Lesson
+  setLesson(overall, m, badChoices, penaltyMultiplier);
+
+  // Cache final state for certificate generation
+  STATE.lastResult = {
+    overall,
+    grade,
+    baseOverall,
+    badChoices,
+    penaltyMultiplier,
+    metrics: { ...m },
+    c2c: { ...STATE.c2c },
+    attemptNumber: STATE.attemptNumber,
+    date: new Date()
+  };
+
+  show("screenResults");
+}
+
+function stripHtml(s) {
+  return s.replace(/<[^>]+>/g, "");
+}
+
+function setC2C(k, v, invertLabels) {
+  const mark = document.getElementById(`c2c-${k}-mark`);
+  const pct = document.getElementById(`c2c-${k}-pct`);
+  // For mat, the bar runs safest→high; higher c2c.mat value = safer so marker at LEFT for high value
+  // All others: higher value = better (more post-consumer / easier disassembly / upcyclable) so marker at LEFT for high
+  // Since all our accumulators go up for better outcomes, the marker position = (100 - v)%
+  const pos = 100 - clamp(v, 0, 100);
+  setTimeout(() => { mark.style.left = `calc(${pos}% - 1.5px)`; }, 100);
+  if (pct) pct.textContent = `${Math.round(clamp(v, 0, 100))}%`;
+}
+
+function renderHistory() {
+  const body = document.getElementById("historyBody");
+  const recent = HISTORY.slice(-10); // show last 10
+  body.innerHTML = recent.map(r => `
+    <tr class="${r.attempt === STATE.attemptNumber ? 'current' : ''}">
+      <td>${r.attempt}</td>
+      <td class="num">${Math.round(r.metrics.env)}</td>
+      <td class="num">${Math.round(r.metrics.recy)}</td>
+      <td class="num">${Math.round(r.metrics.cost)}</td>
+      <td class="num">${Math.round(r.metrics.perf)}</td>
+      <td class="num">${Math.round(r.metrics.mkt)}</td>
+      <td class="num">${r.overall.toFixed(1)}</td>
+      <td>${r.grade}</td>
+    </tr>
+  `).join("");
+}
+
+function scoreToGrade(s) {
+  if (s >= 85) return "A+";
+  if (s >= 78) return "A";
+  if (s >= 72) return "A−";
+  if (s >= 66) return "B+";
+  if (s >= 60) return "B";
+  if (s >= 54) return "B−";
+  if (s >= 48) return "C+";
+  if (s >= 42) return "C";
+  if (s >= 36) return "C−";
+  if (s >= 30) return "D";
+  return "F";
+}
+
+function setLesson(overall, m, badChoices, penaltyMultiplier) {
+  const title = document.getElementById("lessonTitle");
+  const text  = document.getElementById("lessonText");
+  // Identify weakest and strongest dimensions
+  const entries = Object.entries(m).sort((a,b) => a[1] - b[1]);
+  const weakest = entries[0];
+  const strongest = entries[entries.length - 1];
+  const names = { env: "Environmental Impact", recy: "Recyclability", cost: "Cost Efficiency", perf: "Performance", mkt: "Market Appeal" };
+
+  // Penalty commentary
+  let penaltyNote = "";
+  if (badChoices === 0) {
+    penaltyNote = " You made zero DFE-incoherent choices — the coherence multiplier applied was 1.00×.";
+  } else if (badChoices === 1) {
+    penaltyNote = ` One anti-DFE choice cost you a 4% coherence penalty. Recoverable — a single weak link in an otherwise strong program.`;
+  } else if (badChoices === 2) {
+    penaltyNote = ` Two anti-DFE choices triggered a 10% coherence penalty. The DFE program is leaking.`;
+  } else if (badChoices >= 3) {
+    penaltyNote = ` ${badChoices} anti-DFE choices triggered a ${Math.round((1-penaltyMultiplier)*100)}% coherence penalty. When the anti-DFE decisions pile up, no amount of strong choices elsewhere makes the program credible. This is why the scoring penalizes incoherence: in the real world, one published LCA report catches these contradictions and undoes the marketing.`;
+  }
+
+  let t, b;
+  if (overall >= 78) {
+    t = "You designed a drone the future will recognize.";
+    b = `Aurora-1 shipped with a weighted score of ${overall.toFixed(1)}. Your strongest dimension was ${names[strongest[0]]} (${Math.round(strongest[1])}) — and critically, you didn't sacrifice ${names[weakest[0]]} (${Math.round(weakest[1])}) to get there. This is what Ulrich & Eppinger call a coherent DFE stack: the agenda, the materials, the disassembly design, and the end-of-life program all reinforce each other. Rare in industry. Well done.${penaltyNote}`;
+  } else if (overall >= 60) {
+    t = "A solid drone — but coherence beats heroics.";
+    b = `Aurora-1 scored ${overall.toFixed(1)}. Your strongest axis was ${names[strongest[0]]} (${Math.round(strongest[1])}), while ${names[weakest[0]]} (${Math.round(weakest[1])}) lagged. The most common failure in DFE isn't any single bad decision — it's that a great material is paired with a weak end-of-life program, or an ambitious agenda is undermined by a short-term cost choice. In your next run, try to raise your lowest axis without lowering your highest.${penaltyNote}`;
+  } else {
+    t = "The lesson of a difficult run.";
+    b = `Aurora-1 scored ${overall.toFixed(1)}. Your weakest axis was ${names[weakest[0]]} (${Math.round(weakest[1])}). The critical insight from Chapter 12: Design for Environment is not a checklist applied at the end, it is an agenda set at the beginning that constrains every downstream choice. Re-run the simulation and commit earlier — set an ambitious agenda in Decision 1, then see how it forces better choices in the later rounds.${penaltyNote}`;
+  }
+  title.textContent = t;
+  text.textContent = b;
+}
+
+/* =================================================================
+   Certificate generation (PNG download)
+   ================================================================= */
+function downloadCertificate() {
+  if (!STATE.lastResult) {
+    alert("Please complete a run before downloading a certificate.");
+    return;
+  }
+  if (!STATE.studentName) {
+    alert("No student name on file. Please restart and enter your name.");
+    return;
+  }
+
+  const r = STATE.lastResult;
+  const name = STATE.studentName;
+
+  // Canvas: 2000 x 1500 at 2x scale for crispness
+  const W = 2000, H = 1500;
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  // Palette (matches sim)
+  const COL = {
+    paper:  "#f3efe6",
+    paper2: "#e9e3d4",
+    ink:    "#0f1a18",
+    moss:   "#2d5a3d",
+    leaf:   "#88b172",
+    rust:   "#b8472e",
+    amber:  "#d4931f",
+    stone:  "#6b6a5f",
+    good:   "#2d7a3f",
+    hazard: "#c8321a"
+  };
+
+  // Background
+  ctx.fillStyle = COL.paper;
+  ctx.fillRect(0, 0, W, H);
+
+  // Decorative double-border
+  ctx.strokeStyle = COL.ink;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(40, 40, W - 80, H - 80);
+  ctx.lineWidth = 1;
+  ctx.strokeRect(60, 60, W - 120, H - 120);
+
+  // === HEADER STRIP ===
+  // Moss band at top
+  ctx.fillStyle = COL.moss;
+  ctx.fillRect(60, 60, W - 120, 130);
+
+  // Schematic drone icon (top-right)
+  const dcx = W - 170, dcy = 125, dr = 48;
+  ctx.strokeStyle = COL.leaf;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(dcx - dr, dcy - dr); ctx.lineTo(dcx + dr, dcy + dr);
+  ctx.moveTo(dcx + dr, dcy - dr); ctx.lineTo(dcx - dr, dcy + dr);
+  ctx.stroke();
+  // body
+  ctx.fillStyle = COL.moss;
+  ctx.strokeStyle = COL.leaf;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.rect(dcx - 18, dcy - 18, 36, 36);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = COL.leaf;
+  ctx.beginPath(); ctx.arc(dcx, dcy, 7, 0, Math.PI * 2); ctx.fill();
+  // rotors
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx, sy]) => {
+    ctx.fillStyle = COL.moss;
+    ctx.strokeStyle = COL.leaf;
+    ctx.beginPath();
+    ctx.arc(dcx + sx * dr, dcy + sy * dr, 14, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  });
+
+  // Header text
+  ctx.fillStyle = COL.leaf;
+  ctx.font = "500 20px 'JetBrains Mono', monospace";
+  ctx.textAlign = "left";
+  ctx.letterSpacing = "4px"; // not all browsers
+  ctx.fillText("ECODRONE  DESIGNER  ·  INSTRUCTOR  CERTIFIED", 100, 110);
+
+  ctx.fillStyle = COL.paper;
+  ctx.font = "italic 700 40px 'Fraunces', Georgia, serif";
+  ctx.fillText("Certificate of Completion", 100, 165);
+
+  // === CERTIFY BLOCK ===
+  // "This certifies that"
+  ctx.fillStyle = COL.stone;
+  ctx.font = "500 22px 'JetBrains Mono', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("THIS  CERTIFIES  THAT", W / 2, 270);
+
+  // Name (auto-shrink if too long)
+  let nameSize = 96;
+  ctx.font = `700 ${nameSize}px 'Fraunces', Georgia, serif`;
+  while (ctx.measureText(name).width > W - 280 && nameSize > 42) {
+    nameSize -= 4;
+    ctx.font = `700 ${nameSize}px 'Fraunces', Georgia, serif`;
+  }
+  ctx.fillStyle = COL.ink;
+  ctx.fillText(name, W / 2, 365);
+
+  // Underline below name
+  const nameW = Math.min(ctx.measureText(name).width + 80, W - 280);
+  ctx.strokeStyle = COL.moss;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo((W - nameW) / 2, 390);
+  ctx.lineTo((W + nameW) / 2, 390);
+  ctx.stroke();
+
+  // "has successfully completed..."
+  ctx.fillStyle = COL.ink;
+  ctx.font = "italic 400 26px 'Fraunces', Georgia, serif";
+  ctx.fillText("has successfully completed the", W / 2, 440);
+  ctx.font = "italic 700 30px 'Fraunces', Georgia, serif";
+  ctx.fillStyle = COL.moss;
+  ctx.fillText("EcoDrone Designer — Design-for-Environment Simulation", W / 2, 480);
+
+  // === GRADE BIG BLOCK ===
+  // Three stat tiles: Grade · Score · Attempts
+  const tilesY = 540;
+  const tileH = 200;
+  const tileGap = 24;
+  const tilesW = W - 240;
+  const tileW = (tilesW - tileGap * 2) / 3;
+  const tilesX = 120;
+
+  const gradeColor = (r.grade === "F" || r.grade === "D") ? COL.hazard
+                   : (r.grade.startsWith("A")) ? COL.good
+                   : COL.amber;
+
+  function drawTile(x, y, w, h, kicker, bigText, bigColor, subtext) {
+    ctx.fillStyle = COL.paper2;
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = COL.ink;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x, y, w, h);
+    // Left bar
+    ctx.fillStyle = bigColor;
+    ctx.fillRect(x, y, 8, h);
+    // Kicker
+    ctx.fillStyle = COL.stone;
+    ctx.font = "500 18px 'JetBrains Mono', monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(kicker, x + w / 2, y + 40);
+    // Big text
+    ctx.fillStyle = bigColor;
+    ctx.font = "italic 700 92px 'Fraunces', Georgia, serif";
+    ctx.fillText(bigText, x + w / 2, y + 130);
+    // Subtext
+    if (subtext) {
+      ctx.fillStyle = COL.ink;
+      ctx.font = "400 20px 'Inter Tight', Inter, sans-serif";
+      ctx.fillText(subtext, x + w / 2, y + 170);
+    }
+  }
+
+  drawTile(tilesX, tilesY, tileW, tileH, "OVERALL  GRADE", r.grade, gradeColor, `Score: ${r.overall.toFixed(1)} / 100`);
+  drawTile(tilesX + tileW + tileGap, tilesY, tileW, tileH, "BASE  SCORE", r.baseOverall.toFixed(0), COL.moss, `× ${r.penaltyMultiplier.toFixed(2)} coherence`);
+  drawTile(tilesX + (tileW + tileGap) * 2, tilesY, tileW, tileH, "ATTEMPT", `#${r.attemptNumber}`, COL.rust, `of this course session`);
+
+  // === FINAL SCORECARD ===
+  const scY = 800;
+  const scX = 120;
+  const scW = (W - 240 - 40) / 2; // left column
+  const scH = 380;
+
+  // Left panel: scorecard
+  ctx.fillStyle = COL.paper2;
+  ctx.fillRect(scX, scY, scW, scH);
+  ctx.strokeStyle = COL.ink;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(scX, scY, scW, scH);
+
+  ctx.fillStyle = COL.ink;
+  ctx.font = "italic 700 30px 'Fraunces', Georgia, serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Final Scorecard", scX + 28, scY + 48);
+
+  const metricDefs = [
+    { k: "env",  name: "Environmental Impact", color: COL.moss },
+    { k: "recy", name: "Recyclability",        color: COL.leaf },
+    { k: "cost", name: "Cost Efficiency",      color: COL.rust },
+    { k: "perf", name: "Performance",          color: COL.amber },
+    { k: "mkt",  name: "Market Appeal",        color: COL.ink }
+  ];
+  const metricBarY = scY + 80;
+  const metricRowH = 54;
+  const metricBarX = scX + 28;
+  const metricBarW = scW - 56;
+
+  metricDefs.forEach((def, i) => {
+    const y = metricBarY + i * metricRowH;
+    const val = Math.round(r.metrics[def.k]);
+    // Label
+    ctx.fillStyle = COL.ink;
+    ctx.font = "600 18px 'Inter Tight', Inter, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(def.name, metricBarX, y);
+    // Value
+    ctx.fillStyle = COL.ink;
+    ctx.font = "700 22px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(String(val), metricBarX + metricBarW, y);
+    // Bar track
+    ctx.fillStyle = "#d4cfc0";
+    ctx.fillRect(metricBarX, y + 10, metricBarW, 10);
+    // Bar fill
+    ctx.fillStyle = def.color;
+    ctx.fillRect(metricBarX, y + 10, metricBarW * (val / 100), 10);
+  });
+
+  // === C2C ASSESSMENT ===
+  const c2cX = scX + scW + 40;
+  const c2cW = scW;
+  ctx.fillStyle = COL.paper2;
+  ctx.fillRect(c2cX, scY, c2cW, scH);
+  ctx.strokeStyle = COL.ink;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(c2cX, scY, c2cW, scH);
+
+  ctx.fillStyle = COL.ink;
+  ctx.font = "italic 700 30px 'Fraunces', Georgia, serif";
+  ctx.textAlign = "left";
+  ctx.fillText("Cradle-to-Cradle Assessment", c2cX + 28, scY + 48);
+
+  const c2cAxes = [
+    { k: "mat", name: "Material Chemistry",   invert: true  },
+    { k: "rec", name: "Recycled Content",     invert: false },
+    { k: "dis", name: "Disassembly",          invert: false },
+    { k: "rey", name: "Recyclability",        invert: false }
+  ];
+
+  const c2cStartY = scY + 80;
+  const c2cRowH = 72;
+  const c2cBarX = c2cX + 28;
+  const c2cBarW = c2cW - 56;
+
+  // Segments (4 ranges) — palette for each segment left→right
+  const segColors = [COL.good, COL.leaf, COL.amber, COL.hazard];
+
+  c2cAxes.forEach((ax, i) => {
+    const y = c2cStartY + i * c2cRowH;
+    const val = Math.max(0, Math.min(100, r.c2c[ax.k] || 0));
+
+    // Name
+    ctx.fillStyle = COL.ink;
+    ctx.font = "600 16px 'Inter Tight', Inter, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(ax.name, c2cBarX, y);
+
+    // Percentage
+    ctx.fillStyle = COL.stone;
+    ctx.font = "500 14px 'JetBrains Mono', monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(`${Math.round(val)}%`, c2cBarX + c2cBarW, y);
+
+    // Four-segment track
+    const segW = c2cBarW / 4;
+    for (let s = 0; s < 4; s++) {
+      ctx.fillStyle = segColors[s];
+      ctx.fillRect(c2cBarX + s * segW, y + 10, segW - 2, 14);
+    }
+    // Marker: position is (100-val)% for all our normalized axes
+    const markerPos = (100 - val) / 100;
+    const mx = c2cBarX + markerPos * c2cBarW;
+    ctx.fillStyle = COL.ink;
+    ctx.fillRect(mx - 3, y + 6, 6, 22);
+    // White outline for marker
+    ctx.fillStyle = COL.paper;
+    ctx.fillRect(mx - 1, y + 8, 2, 18);
+  });
+
+  // === SIGNATURES ===
+  const sigY = 1260;
+  const sig1X = 280;
+  const sig2X = W - 280;
+  const sigLineLen = 280;
+
+  // Signature lines
+  ctx.strokeStyle = COL.ink;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(sig1X - sigLineLen / 2, sigY);
+  ctx.lineTo(sig1X + sigLineLen / 2, sigY);
+  ctx.moveTo(sig2X - sigLineLen / 2, sigY);
+  ctx.lineTo(sig2X + sigLineLen / 2, sigY);
+  ctx.stroke();
+
+  // Signature names (stylized script)
+  ctx.fillStyle = COL.moss;
+  ctx.font = "italic 600 44px 'Fraunces', 'Brush Script MT', cursive";
+  ctx.textAlign = "center";
+  ctx.fillText("Chad Kennedy", sig1X, sigY - 12);
+  ctx.fillText("Dr. KAI", sig2X, sigY - 12);
+
+  // Signature labels
+  ctx.fillStyle = COL.stone;
+  ctx.font = "500 16px 'JetBrains Mono', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("CHAD  KENNEDY", sig1X, sigY + 30);
+  ctx.fillText("DR.  KAI", sig2X, sigY + 30);
+
+  ctx.fillStyle = COL.ink;
+  ctx.font = "italic 400 15px 'Fraunces', Georgia, serif";
+  ctx.fillText("Program Director", sig1X, sigY + 55);
+  ctx.fillText("Head of Curriculum", sig2X, sigY + 55);
+
+  // === DATE & FOOTER ===
+  const d = r.date || new Date();
+  const dateStr = d.toLocaleDateString("en-US", {
+    year: "numeric", month: "long", day: "numeric"
+  });
+
+  ctx.fillStyle = COL.stone;
+  ctx.font = "500 16px 'JetBrains Mono', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(`ISSUED  ${dateStr.toUpperCase()}`, W / 2, sigY + 10);
+
+  // Bottom branding
+  ctx.fillStyle = COL.stone;
+  ctx.font = "500 14px 'JetBrains Mono', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText("ECODRONE  DESIGNER  ·  DFE  SIMULATION  SUITE  ·  TECHNOLOGY  PRODUCT  DEVELOPMENT  PROGRAM",
+    W / 2, H - 85);
+
+  // === TRIGGER DOWNLOAD ===
+  canvas.toBlob(blob => {
+    if (!blob) { alert("Certificate generation failed."); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const safeName = name.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
+    a.href = url;
+    a.download = `EcoDrone_Certificate_${safeName}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, "image/png");
+}
+
+/* =================================================================
+   Bootstrap
+   ================================================================= */
+window.addEventListener("DOMContentLoaded", async () => {
+  await loadHistory();
+  updateDashboard();
+});
+
+</script>
+</body>
+</html>
